@@ -1,15 +1,10 @@
-cat << 'EOF' > src/App.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { ArrowUpDown, RefreshCw, Droplets, Copy, Check } from "lucide-react";
 
-import SimpleERC20 from "./contracts/SimpleERC20.json";
-import SimpleLiquidityPool from "./contracts/SimpleLiquidityPool.json";
-
-// ALAMAT KONTRAK YANG SUDAH DEPLOY DI LITVM
 const CONTRACTS = {
-  tokenA: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701", // USDC
-  tokenB: "0x9013443A3E0Dd775152678a76fceDcA54e1E1710", // DAI
+  tokenA: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701",
+  tokenB: "0x9013443A3E0Dd775152678a76fceDcA54e1E1710",
   pool: "0xbdA6416a9420fD9fC012A217930c803dA7F3f0f9",
 };
 
@@ -23,6 +18,18 @@ const TOKEN_LIST = {
   WETH: { address: null, name: "Wrapped Ether", logo: "⟠" }
 };
 
+const SimpleERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function approve(address spender, uint256 value) returns (bool)",
+  "function mint(address to, uint256 amount) external"
+];
+
+const SimpleLiquidityPool_ABI = [
+  "function getReserves() view returns (uint256, uint256)",
+  "function swap(address fromToken, uint256 amountIn) external returns (uint256)",
+  "function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256)"
+];
+
 export default function App() {
   const [account, setAccount] = useState("");
   const [provider, setProvider] = useState(null);
@@ -31,7 +38,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("swap");
   const [toast, setToast] = useState(null);
 
-  // Swap State
   const [fromSym, setFromSym] = useState("USDC");
   const [toSym, setToSym] = useState("DAI");
   const [amountIn, setAmountIn] = useState("");
@@ -39,7 +45,6 @@ export default function App() {
   const [toBalance, setToBalance] = useState("—");
   const [swapLoading, setSwapLoading] = useState(false);
 
-  // Pool State & Add Liquidity
   const [reserveA, setReserveA] = useState("—");
   const [reserveB, setReserveB] = useState("—");
   const [rateText, setRateText] = useState("—");
@@ -47,7 +52,6 @@ export default function App() {
   const [amountBInput, setAmountBInput] = useState("");
   const [poolLoading, setPoolLoading] = useState(false);
 
-  // Faucet State
   const [mintBalances, setMintBalances] = useState({});
   const [mintingSym, setMintingSym] = useState(null);
   const [copiedAddr, setCopiedAddr] = useState(null);
@@ -61,7 +65,7 @@ export default function App() {
     try {
       const network = await web3Provider.getNetwork();
       if (network.chainId !== LITVM_CHAIN_ID_DEC) {
-        showToast("⚠️", "Mengalihkan jaringan ke LitVM Testnet...");
+        showToast("⚠️", "Mengalihkan jaringan...");
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
@@ -108,8 +112,8 @@ export default function App() {
   const updateData = useCallback(async () => {
     if (!provider || !account) return;
     try {
-      const balA = await new ethers.Contract(CONTRACTS.tokenA, SimpleERC20.abi, provider).balanceOf(account);
-      const balB = await new ethers.Contract(CONTRACTS.tokenB, SimpleERC20.abi, provider).balanceOf(account);
+      const balA = await new ethers.Contract(CONTRACTS.tokenA, SimpleERC20_ABI, provider).balanceOf(account);
+      const balB = await new ethers.Contract(CONTRACTS.tokenB, SimpleERC20_ABI, provider).balanceOf(account);
       
       const formattedA = ethers.formatUnits(balA, 18);
       const formattedB = ethers.formatUnits(balB, 18);
@@ -129,7 +133,7 @@ export default function App() {
         setToBalance(parseFloat(formattedA).toFixed(1));
       }
 
-      const pool = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool.abi, provider);
+      const pool = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, provider);
       const [resA, resB] = await pool.getReserves();
       setReserveA(ethers.formatUnits(resA, 18));
       setReserveB(ethers.formatUnits(resB, 18));
@@ -156,19 +160,19 @@ export default function App() {
   const handleMintToken = async (sym) => {
     if (!signer || !account) return alert("Hubungkan dompet dahulu!");
     const tokenAddress = TOKEN_LIST[sym]?.address;
-    if (!tokenAddress) return alert(`Token ${sym} belum aktif di smart contract.`);
+    if (!tokenAddress) return alert(`Token ${sym} belum aktif.`);
 
     setMintingSym(sym);
     try {
-      const tokenContract = new ethers.Contract(tokenAddress, ["function mint(address to, uint256 amount) public external"], signer);
+      const tokenContract = new ethers.Contract(tokenAddress, SimpleERC20_ABI, signer);
       const tx = await tokenContract.mint(account, ethers.parseUnits("10000", 18));
-      showToast("⏳", `Memproses Mint 10,000 ${sym}...`);
+      showToast("⏳", `Mint 10,000 ${sym}...`);
       await tx.wait();
-      showToast("✅", `Berhasil Mint 10,000 ${sym}!`);
+      showToast("✅", `Berhasil Mint ${sym}!`);
       updateData();
     } catch (err) {
       console.error(err);
-      alert(`Gagal mint ${sym}.`);
+      alert("Gagal mint.");
     } finally {
       setMintingSym(null);
     }
@@ -179,17 +183,15 @@ export default function App() {
     setSwapLoading(true);
     try {
       const fromAddr = TOKEN_LIST[fromSym].address;
-      // Konversi aman ke string untuk menghindari masalah presisi floating-point JavaScript
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
       
-      const erc20 = new ethers.Contract(fromAddr, SimpleERC20.abi, signer);
+      const erc20 = new ethers.Contract(fromAddr, SimpleERC20_ABI, signer);
       showToast("⏳", "Approve token...");
       const appTx = await erc20.approve(CONTRACTS.pool, parsedIn);
       await appTx.wait();
 
-      const pool = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool.abi, signer);
+      const pool = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
       showToast("⏳", "Eksekusi Swap...");
-      // Menaikkan batas Gas Limit agar transaksi aman dan tidak out-of-gas di LitVM
       const swapTx = await pool.swap(fromAddr, parsedIn, { gasLimit: 500000 });
       await swapTx.wait();
 
@@ -198,42 +200,39 @@ export default function App() {
       updateData();
     } catch (err) {
       console.error(err);
-      showToast("❌", "Swap Gagal. Pastikan dana cukup & input benar.");
+      showToast("❌", "Swap Gagal.");
     } finally {
       setSwapLoading(false);
     }
   };
 
   const handleAddLiquidity = async () => {
-    if (!signer || !amountAInput || !amountBInput) return alert("Masukkan jumlah token!");
+    if (!signer || !amountAInput || !amountBInput) return alert("Masukkan jumlah!");
     setPoolLoading(true);
     try {
       const parsedA = ethers.parseUnits(String(amountAInput), 18);
       const parsedB = ethers.parseUnits(String(amountBInput), 18);
 
-      const tokenAContract = new ethers.Contract(CONTRACTS.tokenA, SimpleERC20.abi, signer);
-      const tokenBContract = new ethers.Contract(CONTRACTS.tokenB, SimpleERC20.abi, signer);
-      const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool.abi, signer);
+      const tokenAContract = new ethers.Contract(CONTRACTS.tokenA, SimpleERC20_ABI, signer);
+      const tokenBContract = new ethers.Contract(CONTRACTS.tokenB, SimpleERC20_ABI, signer);
+      const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
 
       showToast("⏳", "Approve USDC...");
-      const txAppA = await tokenAContract.approve(CONTRACTS.pool, parsedA);
-      await txAppA.wait();
+      await (await tokenAContract.approve(CONTRACTS.pool, parsedA)).wait();
 
       showToast("⏳", "Approve DAI...");
-      const txAppB = await tokenBContract.approve(CONTRACTS.pool, parsedB);
-      await txAppB.wait();
+      await (await tokenBContract.approve(CONTRACTS.pool, parsedB)).wait();
 
-      showToast("⏳", "Menambahkan Likuiditas ke Pool...");
-      const txAdd = await poolContract.addLiquidity(parsedA, parsedB, { gasLimit: 500000 });
-      await txAdd.wait();
+      showToast("⏳", "Menambah Likuiditas...");
+      await (await poolContract.addLiquidity(parsedA, parsedB, { gasLimit: 500000 })).wait();
 
-      showToast("🎉", "Likuiditas Berhasil Ditambahkan!");
+      showToast("🎉", "Likuiditas Berhasil!");
       setAmountAInput("");
       setAmountBInput("");
       updateData();
     } catch (err) {
       console.error(err);
-      showToast("❌", "Gagal menambah likuiditas.");
+      showToast("❌", "Gagal.");
     } finally {
       setPoolLoading(false);
     }
@@ -253,15 +252,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Navbar dengan Integrasi Akun X Zack */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: "600px", margin: "0 auto 30px auto", borderBottom: "1px solid #1e293b", paddingBottom: "15px" }}>
         <div>
           <span style={{ fontSize: "18px", fontWeight: "bold" }}>Freesia DEX</span>
           <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "10px" }}>● LitVM Testnet</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* TOMBOL LINK AKUN X LOGO SVG NATIVE (ANTI ERROR BUILD) */}
-          <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ backgroundColor: "#1e293b", color: "#fff", border: "1px solid #334155", padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", textDecoration: "none" }} title="Builder on X">
+          <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ backgroundColor: "#1e293b", color: "#fff", border: "1px solid #334155", padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
@@ -272,7 +269,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main Card */}
       <div style={{ maxWidth: "450px", margin: "0 auto", backgroundColor: "#111827", borderRadius: "20px", padding: "20px", border: "1px solid #1e293b" }}>
         <div style={{ display: "flex", backgroundColor: "#0f172a", padding: "4px", borderRadius: "10px", marginBottom: "20px" }}>
           {["swap", "mint", "pool"].map((t) => (
@@ -332,7 +328,6 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>Cadangan DAI:</span><strong>{reserveB}</strong></div>
             </div>
 
-            {/* INTERFACE ADD LIQUIDITY */}
             <div style={{ borderTop: "1px solid #1e293b", paddingTop: "12px", marginTop: "4px" }}>
               <div style={{ fontSize: "13px", fontWeight: "bold", color: "#fbbf24", marginBottom: "8px" }}>Tambah Likuiditas</div>
               
@@ -351,7 +346,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Info Contract */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#6b7280", marginTop: "4px" }}>
               <span>Pool Contract:</span>
               <div style={{ display: "flex", gap: "4px", alignItems: "center", color: "#9ca3af" }}>
@@ -367,5 +361,3 @@ export default function App() {
     </div>
   );
 }
-EOF
-
