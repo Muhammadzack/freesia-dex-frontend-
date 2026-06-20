@@ -60,50 +60,75 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center p-6">
-      <header className="w-full max-w-4xl flex justify-between items-center py-4 border-b border-slate-800 mb-12">
-        <div className="flex items-center gap-2 font-bold text-xl text-indigo-400">
-          <Coins className="w-6 h-6" /> FREESIA DEX
+    <div style={{ backgroundColor: "#0f172a", color: "#f8fafc", minHeight: "100vh", fontFamily: "sans-serif", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px" }}>
+      {/* HEADER */}
+      <header style={{ width: "100%", maxWidth: "480px", display: "flex", justifyContent: "between", alignItems: "center", paddingBottom: "16px", borderBottom: "1px solid #334155", marginBottom: "40px", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", fontSize: "20px", color: "#fde047" }}>
+          <Coins style={{ width: "24px", height: "24px", color: "#2563eb" }} /> 
+          <span>FREESIA <span style={{ color: "#2563eb" }}>DEX</span></span>
         </div>
-        <button onClick={connectWallet} className="flex items-center gap-2 bg-indigo-600 px-5 py-2 rounded-xl font-medium">
-          <Wallet className="w-4 h-4" />
-          {account ? `${account.substring(0, 6)}...` : "Connect Wallet"}
+        <button onClick={connectWallet} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#2563eb", color: "#ffffff", padding: "8px 16px", borderRadius: "12px", fontWeight: "600", border: "none", cursor: "pointer", boxShadow: "0 4px 6px -1px rgba(37, 99, 235, 0.4)" }}>
+          <Wallet style={{ width: "16px", height: "16px", color: "#fde047" }} />
+          {account ? `${account.substring(0, 6)}...` : "Connect"}
         </button>
       </header>
 
-      <main className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6">
-        <div className="flex bg-slate-950 p-1 rounded-2xl mb-6">
-          <button onClick={() => setActiveTab("swap")} className={`flex-1 py-3 text-center rounded-xl ${activeTab === "swap" ? "bg-slate-800" : "text-slate-400"}`}>Swap</button>
-          <button onClick={() => setActiveTab("pool")} className={`flex-1 py-3 text-center rounded-xl ${activeTab === "pool" ? "bg-slate-800" : "text-slate-400"}`}>Pool</button>
+      {/* KARTU UTAMA */}
+      <main style={{ width: "100%", maxWidth: "420px", backgroundColor: "#1e293b", border: "2px solid #2563eb", borderRadius: "24px", padding: "24px", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)" }}>
+        {/* NAVIGASI TAB */}
+        <div style={{ display: "flex", backgroundColor: "#0f172a", padding: "4px", borderRadius: "16px", marginBottom: "24px" }}>
+          <button onClick={() => setActiveTab("swap")} style={{ flex: 1, padding: "12px", textAlign: "center", borderRadius: "12px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: "bold", backgroundColor: activeTab === "swap" ? "#fde047" : "transparent", color: activeTab === "swap" ? "#0f172a" : "#94a3b8" }}>
+            Swap
+          </button>
+          <button onClick={() => setActiveTab("pool")} style={{ flex: 1, padding: "12px", textAlign: "center", borderRadius: "12px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: "bold", backgroundColor: activeTab === "pool" ? "#fde047" : "transparent", color: activeTab === "pool" ? "#0f172a" : "#94a3b8" }}>
+            Pool (Minion)
+          </button>
         </div>
 
+        {/* KONTEN SWAP */}
         {activeTab === "swap" ? (
-          <form onSubmit={handleSwap} className="space-y-4">
-            <div className="bg-slate-950 p-4 rounded-2xl">
-              <label className="text-xs text-slate-400">Bayar (USDC)</label>
-              <input type="number" placeholder="0.0" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} className="w-full bg-transparent text-xl outline-none mt-1" required />
+          <form onSubmit={handleSwap} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ backgroundColor: "#0f172a", padding: "16px", borderRadius: "16px", border: "1px solid #334155" }}>
+              <label style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600" }}>Bayar (USDC)</label>
+              <input type="number" placeholder="0.0" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} style={{ width: "100%", backgroundColor: "transparent", border: "none", color: "#ffffff", fontSize: "24px", fontWeight: "bold", outline: "none", marginTop: "8px" }} required />
             </div>
-            <div className="flex justify-center"><ArrowUpDown className="w-5 h-5 text-indigo-400" /></div>
-            <div className="bg-slate-950 p-4 rounded-2xl">
-              <label className="text-xs text-slate-400">Terima (DAI)</label>
-              <div className="w-full text-xl mt-1 text-slate-400">{amountIn ? (amountIn * 0.99).toFixed(2) : "0.0"}</div>
+            
+            <div style={{ display: "flex", justifyContent: "center", margin: "-8px 0" }}>
+              <div style={{ backgroundColor: "#2563eb", padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 10px #2563eb" }}>
+                <ArrowUpDown style={{ width: "20px", height: "20px", color: "#fde047" }} />
+              </div>
             </div>
-            <button type="submit" disabled={loading} className="w-full bg-indigo-600 py-4 rounded-2xl font-bold">
-              {loading ? "Processing..." : "Tukar Token (Swap)"}
+
+            <div style={{ backgroundColor: "#0f172a", padding: "16px", borderRadius: "16px", border: "1px solid #334155" }}>
+              <label style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600" }}>Terima (DAI)</label>
+              <div style={{ color: "#fde047", fontSize: "24px", fontWeight: "bold", marginTop: "8px" }}>
+                {amountIn ? (amountIn * 0.99).toFixed(2) : "0.0"}
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading} style={{ width: "100%", backgroundColor: "#fde047", color: "#0f172a", padding: "16px", borderRadius: "16px", fontWeight: "bold", fontSize: "16px", border: "none", cursor: "pointer", marginTop: "12px", transition: "0.2s", boxShadow: "0 4px 14px rgba(253, 224, 71, 0.4)" }}>
+              {loading ? "Banana Processing..." : "Tukar Token (Swap)"}
             </button>
           </form>
         ) : (
-          <div className="space-y-4">
-            <div className="bg-slate-950 p-4 rounded-2xl space-y-2">
-              <input type="number" placeholder="Jumlah USDC" value={poolAmountA} onChange={(e) => setPoolAmountA(e.target.value)} className="w-full bg-transparent outline-none" />
-              <input type="number" placeholder="Jumlah DAI" value={poolAmountB} onChange={(e) => setPoolAmountB(e.target.value)} className="w-full bg-transparent outline-none" />
+          /* KONTEN POOL */
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ backgroundColor: "#0f172a", padding: "16px", borderRadius: "16px", border: "1px solid #334155", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input type="number" placeholder="Jumlah USDC" value={poolAmountA} onChange={(e) => setPoolAmountA(e.target.value)} style={{ width: "100%", backgroundColor: "transparent", border: "none", color: "#ffffff", fontSize: "16px", outline: "none" }} />
+              <hr style={{ border: "0", borderTop: "1px solid #334155" }} />
+              <input type="number" placeholder="Jumlah DAI" value={poolAmountB} onChange={(e) => setPoolAmountB(e.target.value)} style={{ width: "100%", backgroundColor: "transparent", border: "none", color: "#ffffff", fontSize: "16px", outline: "none" }} />
             </div>
-            <button onClick={() => alert("Fitur Liquidity dalam Pengembangan")} className="w-full bg-slate-800 py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
-              <PlusCircle className="w-5 h-5" /> Tambah Likuiditas
+            <button onClick={() => alert("Bello! Fitur Liquidity Minion dalam Pengembangan 🍌")} style={{ width: "100%", backgroundColor: "#2563eb", color: "#ffffff", padding: "16px", borderRadius: "16px", fontWeight: "bold", fontSize: "16px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+              <PlusCircle style={{ width: "20px", height: "20px", color: "#fde047" }} /> Tambah Likuiditas
             </button>
           </div>
         )}
       </main>
+
+      {/* FOOTER LUCU */}
+      <footer style={{ marginTop: "40px", fontSize: "12px", color: "#64748b" }}>
+        Freesia DEX v2.0 • Powered by <span style={{ color: "#fde047", fontWeight: "bold" }}>Banana 🍌</span> Environment
+      </footer>
     </div>
   );
 }
