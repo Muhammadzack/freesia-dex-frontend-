@@ -26,8 +26,10 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("swap");
   const [amountIn, setAmountIn] = useState("");
-  const [networkName, setNetworkName] = useState("Sepolia");
-  const [mintStatus, setMintStatus] = useState("");
+  const [networkName, setNetworkName] = useState("Sepolia"); const [mintStatus, setMintStatus] = useState("");
+
+const [fromToken, setFromToken] = useState("USDC");
+const [toToken, setToToken] = useState("DAI");
 
   React.useEffect(() => {
     const checkNetwork = async () => {
