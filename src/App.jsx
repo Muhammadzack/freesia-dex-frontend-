@@ -29,6 +29,30 @@ export default function App() {
   const [networkName, setNetworkName] = useState("Sepolia");
   const [mintStatus, setMintStatus] = useState("");
 
+  React.useEffect(() => {
+    const checkNetwork = async () => {
+      if (window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const network = await provider.getNetwork();
+          if (Number(network.chainId) === 4441) {
+            setNetworkName("zkLTC Testnet");
+          } else {
+            setNetworkName("zkLTC Testnet");
+         }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+    checkNetwork();
+    if (window.ethereum) {
+      window.ethereum.on("chainChanged", () => {
+        window.location.reload();
+      });
+    }
+  }, []);
+
   const connectWallet = async () => {
     if (!window.ethereum) return alert("Install MetaMask!");
     try {
