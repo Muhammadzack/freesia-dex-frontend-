@@ -1,6 +1,7 @@
+cat << 'EOF' > src/App.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
-import { ArrowUpDown, Wallet, RefreshCw, Droplets, Copy, Check, Twitter } from "lucide-react";
+import { ArrowUpDown, RefreshCw, Droplets, Copy, Check } from "lucide-react";
 
 import SimpleERC20 from "./contracts/SimpleERC20.json";
 import SimpleLiquidityPool from "./contracts/SimpleLiquidityPool.json";
@@ -178,7 +179,8 @@ export default function App() {
     setSwapLoading(true);
     try {
       const fromAddr = TOKEN_LIST[fromSym].address;
-      const parsedIn = ethers.parseUnits(amountIn, 18);
+      // Konversi aman ke string untuk menghindari masalah presisi floating-point JavaScript
+      const parsedIn = ethers.parseUnits(String(amountIn), 18);
       
       const erc20 = new ethers.Contract(fromAddr, SimpleERC20.abi, signer);
       showToast("⏳", "Approve token...");
@@ -187,7 +189,8 @@ export default function App() {
 
       const pool = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool.abi, signer);
       showToast("⏳", "Eksekusi Swap...");
-      const swapTx = await pool.swap(fromAddr, parsedIn, { gasLimit: 300000 });
+      // Menaikkan batas Gas Limit agar transaksi aman dan tidak out-of-gas di LitVM
+      const swapTx = await pool.swap(fromAddr, parsedIn, { gasLimit: 500000 });
       await swapTx.wait();
 
       showToast("🎉", "Swap Berhasil!");
@@ -195,19 +198,18 @@ export default function App() {
       updateData();
     } catch (err) {
       console.error(err);
-      showToast("❌", "Swap Gagal.");
+      showToast("❌", "Swap Gagal. Pastikan dana cukup & input benar.");
     } finally {
       setSwapLoading(false);
     }
   };
 
-  // ── FUNGSI BARU: ADD LIQUIDITY ──
   const handleAddLiquidity = async () => {
     if (!signer || !amountAInput || !amountBInput) return alert("Masukkan jumlah token!");
     setPoolLoading(true);
     try {
-      const parsedA = ethers.parseUnits(amountAInput, 18);
-      const parsedB = ethers.parseUnits(amountBInput, 18);
+      const parsedA = ethers.parseUnits(String(amountAInput), 18);
+      const parsedB = ethers.parseUnits(String(amountBInput), 18);
 
       const tokenAContract = new ethers.Contract(CONTRACTS.tokenA, SimpleERC20.abi, signer);
       const tokenBContract = new ethers.Contract(CONTRACTS.tokenB, SimpleERC20.abi, signer);
@@ -222,7 +224,7 @@ export default function App() {
       await txAppB.wait();
 
       showToast("⏳", "Menambahkan Likuiditas ke Pool...");
-      const txAdd = await poolContract.addLiquidity(parsedA, parsedB, { gasLimit: 350000 });
+      const txAdd = await poolContract.addLiquidity(parsedA, parsedB, { gasLimit: 500000 });
       await txAdd.wait();
 
       showToast("🎉", "Likuiditas Berhasil Ditambahkan!");
@@ -251,16 +253,18 @@ export default function App() {
         </div>
       )}
 
-      {/* Navbar dengan Integrasi Akun X */}
+      {/* Navbar dengan Integrasi Akun X Zack */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: "600px", margin: "0 auto 30px auto", borderBottom: "1px solid #1e293b", paddingBottom: "15px" }}>
         <div>
           <span style={{ fontSize: "18px", fontWeight: "bold" }}>Freesia DEX</span>
           <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "10px" }}>● LitVM Testnet</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* TOMBOL AKUN X KAMU */}
-          <a href="https://x.com/Muhammadzack" target="_blank" rel="noreferrer" style={{ backgroundColor: "#1e293b", color: "#fff", border: "1px solid #334155", padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", textDecoration: "none" }} title="Ikuti di X">
-            <Twitter size={16} color="#1d9bf0" />
+          {/* TOMBOL LINK AKUN X LOGO SVG NATIVE (ANTI ERROR BUILD) */}
+          <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ backgroundColor: "#1e293b", color: "#fff", border: "1px solid #334155", padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", textDecoration: "none" }} title="Builder on X">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
           </a>
           <button onClick={connectWallet} style={{ backgroundColor: "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" }}>
             {account ? `${account.substring(0,6)}...${account.substring(account.length-4)}` : "Connect Wallet"}
@@ -328,7 +332,7 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>Cadangan DAI:</span><strong>{reserveB}</strong></div>
             </div>
 
-            {/* INTERFACE BARU: INPUT ADD LIQUIDITY */}
+            {/* INTERFACE ADD LIQUIDITY */}
             <div style={{ borderTop: "1px solid #1e293b", paddingTop: "12px", marginTop: "4px" }}>
               <div style={{ fontSize: "13px", fontWeight: "bold", color: "#fbbf24", marginBottom: "8px" }}>Tambah Likuiditas</div>
               
@@ -363,3 +367,5 @@ export default function App() {
     </div>
   );
 }
+EOF
+
