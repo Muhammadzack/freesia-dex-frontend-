@@ -69,12 +69,19 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 METODE KONEKSI KEMBALI SEPERTI AWAL (DIRECT CALL ANTI-GAGAL)
+  // 🦊 DIRECT ETHEREUM INJECTION METHOD (ANTI-GAGAL GLOBAL)
   const connectWallet = async () => {
-    if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
+    if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        // Panggil langsung tanpa melalui state modal internal react
+        // Menggunakan metode dasar window.ethereum bawaan browser langsung
+        const method = window.ethereum.request || window.ethereum.send;
+        if (!method) {
+          alert("Provider Web3 tidak merespons dengan benar.");
+          return;
+        }
+
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
         if (accounts && accounts.length > 0) {
           const web3Provider = new ethers.BrowserProvider(window.ethereum);
           const web3Signer = await web3Provider.getSigner();
@@ -83,11 +90,12 @@ export default function App() {
           setSigner(web3Signer);
           setAccount(accounts[0]);
         }
-      } catch (err) { 
-        console.error("Koneksi ditolak:", err);
+      } catch (err) {
+        console.error("Koneksi gagal:", err);
+        alert("Gagal terhubung. Pastikan Anda membuka web ini di dalam browser dompet MetaMask/Rabby atau Mises Browser yang sudah terinstal extension crypto.");
       }
     } else {
-      alert("Browser Web3 tidak terdeteksi! Pastikan buka lewat dApp Browser MetaMask/Rabby.");
+      alert("Ekstensi/Dompet Web3 tidak terdeteksi! Silakan buka tautan ini di dApp Browser di dalam aplikasi dompet Anda.");
     }
   };
 
@@ -199,7 +207,6 @@ export default function App() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
-          {/* Tombol Langsung Memicu connectWallet Tanpa Modal */}
           <button onClick={connectWallet} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: "pointer" }}>
             {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
           </button>
