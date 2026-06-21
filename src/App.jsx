@@ -16,7 +16,19 @@ const FreesiaLogo = () => (
   </svg>
 );
 
-const CONTRACTS = { pool: "0xbDA6416a9420fD9fC012A21930c803dA7F3f0f91" };
+// ✅ FIXED: address pool sesuai hasil deploy asli (tidak ada karakter ekstra)
+const CONTRACTS = { pool: "0xbdA6416a9420fD9fC012A217930c803dA7F3f0f9" };
+
+// ✅ NETWORK CONFIG — LitVM Testnet (chain ID 4441)
+const LITVM_CHAIN_ID_HEX = "0x1159"; // 4441 dalam hex
+const LITVM_CHAIN_ID_DEC = 4441n;
+const LITVM_PARAMS = {
+  chainId: LITVM_CHAIN_ID_HEX,
+  chainName: "LitVM Testnet",
+  nativeCurrency: { name: "zkLTC", symbol: "zkLTC", decimals: 18 },
+  rpcUrls: ["https://liteforge.rpc.caldera.xyz/http"],
+  blockExplorerUrls: ["https://liteforge.explorer.caldera.xyz"],
+};
 
 const SimpleERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -40,7 +52,8 @@ const styles = {
   button: { backgroundColor: "#FDC500", color: "#000", border: "none", padding: "16px", borderRadius: "12px", fontWeight: "900", cursor: "pointer", width: "100%", fontSize: "16px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" },
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
   input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
-  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto", borderTop: "1px solid #E2E8F0" }
+  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto", borderTop: "1px solid #E2E8F0" },
+  networkBadge: (ok) => ({ fontSize: "11px", fontWeight: "bold", color: ok ? "#10B981" : "#DC2626", backgroundColor: ok ? "#ECFDF5" : "#FEF2F2", padding: "2px 8px", borderRadius: "6px", marginLeft: "8px" })
 };
 
 export default function App() {
@@ -48,13 +61,16 @@ export default function App() {
   const [account, setAccount] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
-  
+  const [connecting, setConnecting] = useState(false);
+  const [onCorrectNetwork, setOnCorrectNetwork] = useState(false);
+
+  // ✅ FIXED: address DAI diperbaiki (sebelumnya ada teks "Base" nyelip di tengah)
   const [tokens, setTokens] = useState({
     zkLTC: { address: "NATIVE", isNative: true },
     USDC: { address: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701", isNative: false },
-    DAI: { address: "0x9013443A3E0Dd775152678a76fceDCBase54e1E1710", isNative: false }
+    DAI: { address: "0x9013443A3E0Dd775152678a76fceDcA54e1E1710", isNative: false }
   });
-  
+
   const [balances, setBalances] = useState({ zkLTC: "0.0000", USDC: "0.00", DAI: "0.00" });
   const [fromSym, setFromSym] = useState("USDC");
   const [toSym, setToSym] = useState("DAI");
@@ -69,35 +85,98 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 DIRECT ETHEREUM INJECTION METHOD (ANTI-GAGAL GLOBAL)
+  // 🦊 CONNECT WALLET — sekarang otomatis switch/tambah network LitVM
   const connectWallet = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        // Menggunakan metode dasar window.ethereum bawaan browser langsung
-        const method = window.ethereum.request || window.ethereum.send;
-        if (!method) {
-          alert("Provider Web3 tidak merespons dengan benar.");
-          return;
-        }
-
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        
-        if (accounts && accounts.length > 0) {
-          const web3Provider = new ethers.BrowserProvider(window.ethereum);
-          const web3Signer = await web3Provider.getSigner();
-          
-          setProvider(web3Provider);
-          setSigner(web3Signer);
-          setAccount(accounts[0]);
-        }
-      } catch (err) {
-        console.error("Koneksi gagal:", err);
-        alert("Gagal terhubung. Pastikan Anda membuka web ini di dalam browser dompet MetaMask/Rabby atau Mises Browser yang sudah terinstal extension crypto.");
-      }
-    } else {
+    if (typeof window === 'undefined' || !window.ethereum) {
       alert("Ekstensi/Dompet Web3 tidak terdeteksi! Silakan buka tautan ini di dApp Browser di dalam aplikasi dompet Anda.");
+      return;
+    }
+
+    try {
+      setConnecting(true);
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        alert("Tidak ada akun yang dipilih di wallet.");
+        setConnecting(false);
+        return;
+      }
+
+      // ✅ Cek network saat ini, pindah ke LitVM kalau belum benar
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await web3Provider.getNetwork();
+
+      if (network.chainId !== LITVM_CHAIN_ID_DEC) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: LITVM_CHAIN_ID_HEX }],
+          });
+        } catch (switchErr) {
+          // 4902 = network belum dikenal wallet, perlu ditambahkan dulu
+          if (switchErr.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [LITVM_PARAMS],
+              });
+            } catch (addErr) {
+              console.error(addErr);
+              alert("Gagal menambahkan network LitVM Testnet ke wallet kamu.");
+              setConnecting(false);
+              return;
+            }
+          } else {
+            alert("Silakan ganti network ke LitVM Testnet (chain ID 4441) secara manual di wallet kamu.");
+            setConnecting(false);
+            return;
+          }
+        }
+      }
+
+      // Re-create provider setelah switch network supaya state-nya fresh
+      const finalProvider = new ethers.BrowserProvider(window.ethereum);
+      const finalNetwork = await finalProvider.getNetwork();
+      const web3Signer = await finalProvider.getSigner();
+
+      setProvider(finalProvider);
+      setSigner(web3Signer);
+      setAccount(accounts[0]);
+      setOnCorrectNetwork(finalNetwork.chainId === LITVM_CHAIN_ID_DEC);
+
+    } catch (err) {
+      console.error("Koneksi gagal:", err);
+      alert("Gagal terhubung: " + (err.message || "Unknown error").slice(0, 100));
+    } finally {
+      setConnecting(false);
     }
   };
+
+  // ✅ Dengarkan perubahan network/akun dari wallet, refresh status otomatis
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    const handleChainChanged = (chainIdHex) => {
+      setOnCorrectNetwork(chainIdHex.toLowerCase() === LITVM_CHAIN_ID_HEX);
+      window.location.reload();
+    };
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        setAccount("");
+        setSigner(null);
+      } else {
+        window.location.reload();
+      }
+    };
+
+    window.ethereum.on('chainChanged', handleChainChanged);
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+
+    return () => {
+      window.ethereum.removeListener('chainChanged', handleChainChanged);
+      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+    };
+  }, []);
 
   const updateData = useCallback(async () => {
     if (!provider || !account) return;
@@ -114,7 +193,7 @@ export default function App() {
         }
       }
       setBalances(prev => ({ ...prev, ...newBalances }));
-    } catch (err) { console.error("Balance fetch error"); }
+    } catch (err) { console.error("Balance fetch error", err); }
   }, [provider, account, tokens]);
 
   useEffect(() => {
@@ -135,30 +214,44 @@ export default function App() {
     updateData();
   };
 
+  const ensureCorrectNetwork = async () => {
+    if (!signer) {
+      alert("Hubungkan wallet dulu!");
+      return false;
+    }
+    if (!onCorrectNetwork) {
+      alert("Wallet kamu belum di network LitVM Testnet. Klik Connect Wallet lagi untuk pindah network otomatis.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSwap = async () => {
-    if (!signer || !amountIn) return alert("Masukkan jumlah!");
+    if (!(await ensureCorrectNetwork())) return;
+    if (!amountIn) return alert("Masukkan jumlah!");
     setLoading(true);
     try {
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
       if (tokens[fromSym].isNative) {
-        const tx = await signer.sendTransaction({ to: account, value: 0 });
-        await tx.wait();
+        alert("Swap langsung dari zkLTC native belum didukung pool ini. Gunakan USDC/DAI.");
       } else {
         const tokenContract = new ethers.Contract(tokens[fromSym].address, SimpleERC20_ABI, signer);
         await (await tokenContract.approve(CONTRACTS.pool, parsedIn)).wait();
         const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
         await (await poolContract.swap(tokens[fromSym].address, parsedIn, { gasLimit: 400000 })).wait();
+        alert("Swap Berhasil!");
+        setTxCount(prev => prev + 1);
+        setAmountIn("");
+        updateData();
       }
-      alert("Swap Berhasil!");
-      setTxCount(prev => prev + 1);
-      setAmountIn("");
-      updateData();
-    } catch (err) { console.error(err); alert("Swap Gagal. Pastikan gas fee cukup."); } 
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      alert("Swap Gagal: " + (err.reason || err.message || "Pastikan gas fee cukup.").slice(0, 100));
+    } finally { setLoading(false); }
   };
 
   const handleMint = async (sym) => {
-    if (!signer) return alert("Hubungkan dompet!");
+    if (!(await ensureCorrectNetwork())) return;
     setLoading(true);
     try {
       const contract = new ethers.Contract(tokens[sym].address, SimpleERC20_ABI, signer);
@@ -166,49 +259,63 @@ export default function App() {
       alert(`Mint 10,000 ${sym} Berhasil!`);
       setTxCount(prev => prev + 1);
       updateData();
-    } catch (err) { console.error(err); alert("Mint Gagal."); }
+    } catch (err) {
+      console.error(err);
+      alert("Mint Gagal: " + (err.reason || err.message || "Unknown error").slice(0, 100));
+    }
     setLoading(false);
   };
 
   const handleAddLiquidity = async () => {
-    if (!signer || !amountAInput || !amountBInput) return alert("Isi nominal!");
+    if (!(await ensureCorrectNetwork())) return;
+    if (!amountAInput || !amountBInput) return alert("Isi nominal!");
     setLoading(true);
     try {
       const pA = ethers.parseUnits(String(amountAInput), 18);
       const pB = ethers.parseUnits(String(amountBInput), 18);
       const tokenAContract = new ethers.Contract(tokens[poolTokenA].address, SimpleERC20_ABI, signer);
       const tokenBContract = new ethers.Contract(tokens[poolTokenB].address, SimpleERC20_ABI, signer);
-      
+
       await (await tokenAContract.approve(CONTRACTS.pool, pA)).wait();
       await (await tokenBContract.approve(CONTRACTS.pool, pB)).wait();
-      
+
       const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
       await (await poolContract.addLiquidity(pA, pB, { gasLimit: 500000 })).wait();
-      
+
       alert("Likuiditas Berhasil Ditambahkan!");
       setTxCount(prev => prev + 1);
       setAmountAInput(""); setAmountBInput("");
       updateData();
-    } catch (err) { console.error(err); alert("Gagal tambah likuiditas."); }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal tambah likuiditas: " + (err.reason || err.message || "Unknown error").slice(0, 100));
+    }
     setLoading(false);
   };
 
   return (
     <div style={styles.layout}>
-      
+
       {/* 1. HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <FreesiaLogo />
           <div>
             <h1 style={{ fontSize: "20px", margin: 0, fontWeight: "900", color: "#0F172A" }}>Freesia DEX</h1>
-            <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>LitVM Testnet</span>
+            <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>
+              LitVM Testnet
+              {account && (
+                <span style={styles.networkBadge(onCorrectNetwork)}>
+                  {onCorrectNetwork ? "✓ Network Benar" : "⚠ Network Salah"}
+                </span>
+              )}
+            </span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
-          <button onClick={connectWallet} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: "pointer" }}>
-            {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
+          <button onClick={connectWallet} disabled={connecting} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: connecting ? "wait" : "pointer", opacity: connecting ? 0.7 : 1 }}>
+            {connecting ? "Menghubungkan..." : account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
           </button>
         </div>
       </header>
@@ -294,7 +401,7 @@ export default function App() {
               {Object.entries(tokens).filter(([_, data]) => !data.isNative).map(([sym, _]) => (
                 <div key={sym} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", border: "1px solid #E2E8F0", borderRadius: "12px", marginBottom: "12px" }}>
                   <div><strong>{sym}</strong><div style={{ fontSize: "12px", color: "#64748B" }}>Saldo: {balances[sym] || "0.00"}</div></div>
-                  <button onClick={() => handleMint(sym)} style={{ backgroundColor: "#FDC500", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>Mint 10k</button>
+                  <button onClick={() => handleMint(sym)} disabled={loading} style={{ backgroundColor: "#FDC500", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", cursor: loading ? "wait" : "pointer" }}>Mint 10k</button>
                 </div>
               ))}
             </div>
@@ -357,8 +464,11 @@ export default function App() {
         <p style={{ fontSize: "12px", fontWeight: "bold", color: "#94A3B8", letterSpacing: "1px", margin: 0 }}>
           POWERED BY FREESIA NETWORK
         </p>
+        <p style={{ fontSize: "11px", color: "#CBD5E1", margin: "6px 0 0 0" }}>
+          Dibangun oleh <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#94A3B8", fontWeight: "bold" }}>@0xzackbh</a>
+        </p>
       </footer>
-      
+
       <style>{`
         @keyframes pulse { 
           0%, 100% { transform: scale(1); opacity: 0.85; } 
