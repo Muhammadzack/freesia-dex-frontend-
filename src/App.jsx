@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
-import { ArrowUpDown, RefreshCw, Droplets, Copy, Check, Settings, History, BarChart3, Clock, AlertCircle } from "lucide-react";
+import { 
+  ArrowUpDown, RefreshCw, Droplets, Copy, Check, 
+  Settings, History, BarChart3, Clock, AlertCircle, 
+  LogOut // <-- Untuk tombol disconnect
+} from "lucide-react";
 
 // ==================== ABI & KONFIGURASI ====================
 const ERC20_ABI = [
@@ -80,6 +84,17 @@ function App() {
   const [mintingSym, setMintingSym] = useState(null);
   const [copiedAddr, setCopiedAddr] = useState(null);
 
+  // ==================== DISCONNECT WALLET ====================
+  const disconnectWallet = () => {
+    setAccount("");
+    setProvider(null);
+    setSigner(null);
+    setFromBalance("—");
+    setToBalance("—");
+    setMintBalances({});
+    showToast("👋", "Dompet terputus");
+  };
+
   // ==================== LOAD HISTORY DARI LOCALSTORAGE ====================
   useEffect(() => {
     const saved = localStorage.getItem("freesia_tx_history");
@@ -95,7 +110,7 @@ function App() {
   // ==================== SIMPAN HISTORY KE LOCALSTORAGE ====================
   const saveHistory = useCallback((newTx) => {
     setTxHistory(prev => {
-      const updated = [newTx, ...prev].slice(0, 100); // Maksimal 100 history
+      const updated = [newTx, ...prev].slice(0, 100);
       localStorage.setItem("freesia_tx_history", JSON.stringify(updated));
       return updated;
     });
@@ -218,7 +233,6 @@ function App() {
         setToBalance(parseFloat(formattedA).toFixed(1));
       }
 
-      // ===== STATISTIK POOL =====
       const [resA, resB] = await pool.getReserves();
       const resAFormatted = ethers.formatUnits(resA, 18);
       const resBFormatted = ethers.formatUnits(resB, 18);
@@ -231,7 +245,6 @@ function App() {
         rate: resA > 0n ? (Number(resB) / Number(resA)).toFixed(4) : "—"
       }));
 
-      // Simulasi volume 24h (dari history)
       const today = new Date().toDateString();
       const todayTxs = txHistory.filter(tx => 
         tx.timestamp.includes(today) && tx.type === "Swap" && tx.status === "success"
@@ -289,7 +302,7 @@ function App() {
     }
   };
 
-  // ==================== SWAP TOKEN (DENGAN SLIPPAGE) ====================
+  // ==================== SWAP TOKEN ====================
   const handleSwap = async () => {
     if (!signer || !account) {
       alert("🔴 Hubungkan dompet dahulu!");
@@ -314,21 +327,18 @@ function App() {
       const slippageMultiplier = 1 - (slippage / 100);
       const amountOutMin = BigInt(Math.floor(Number(parsedIn) * slippageMultiplier));
 
-      // Cek saldo
       const tokenContract = new ethers.Contract(fromAddr, ERC20_ABI, signer);
       const balance = await tokenContract.balanceOf(account);
       if (balance < parsedIn) {
         throw new Error(`Saldo ${fromSym} tidak cukup!`);
       }
 
-      // Cek allowance
       const allowance = await tokenContract.allowance(account, CONTRACTS.pool);
       if (allowance < parsedIn) {
         const approveTx = await tokenContract.approve(CONTRACTS.pool, parsedIn);
         await approveTx.wait();
       }
 
-      // Eksekusi swap dengan slippage
       const poolContract = new ethers.Contract(CONTRACTS.pool, POOL_ABI, signer);
       const swapTx = await poolContract.swap(fromAddr, parsedIn, amountOutMin, {
         gasLimit: 800000,
@@ -376,14 +386,12 @@ function App() {
       const tokenB = new ethers.Contract(CONTRACTS.tokenB, ERC20_ABI, signer);
       const pool = new ethers.Contract(CONTRACTS.pool, POOL_ABI, signer);
 
-      // Approve USDC
       const allowanceA = await tokenA.allowance(account, CONTRACTS.pool);
       if (allowanceA < parsedA) {
         const approveTxA = await tokenA.approve(CONTRACTS.pool, parsedA);
         await approveTxA.wait();
       }
 
-      // Approve DAI
       const allowanceB = await tokenB.allowance(account, CONTRACTS.pool);
       if (allowanceB < parsedB) {
         const approveTxB = await tokenB.approve(CONTRACTS.pool, parsedB);
@@ -418,9 +426,8 @@ function App() {
     setTimeout(() => setCopiedAddr(null), 2000);
   };
 
-  // ==================== RENDER GRAFIK SEDERHANA ====================
+  // ==================== RENDER GRAFIK ====================
   const renderChart = () => {
-    // Simulasi data harga dari pool
     const price = poolStats.rate !== "—" ? parseFloat(poolStats.rate) : 1;
     const history = poolStats.priceHistory.length > 0 ? poolStats.priceHistory : [price * 0.98, price * 0.99, price, price * 1.01, price * 1.02];
     
@@ -573,9 +580,34 @@ function App() {
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
           </a>
-          <button onClick={connectWallet} disabled={connecting} style={{ backgroundColor: account ? "#10b981" : "#fbbf24", color: account ? "#fff" : "#000", border: "none", padding: "8px 16px", borderRadius: "10px", fontWeight: "bold", cursor: connecting ? "not-allowed" : "pointer", opacity: connecting ? 0.7 : 1 }}>
-            {connecting ? "⏳ Connecting..." : account ? `✅ ${account.substring(0,6)}...` : "🔌 Connect"}
-          </button>
+          {account ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button 
+                onClick={disconnectWallet}
+                style={{ 
+                  backgroundColor: "#ef4444", 
+                  color: "#fff", 
+                  border: "none", 
+                  padding: "8px 12px", 
+                  borderRadius: "10px", 
+                  fontWeight: "bold", 
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "12px"
+                }}
+                title="Disconnect Wallet"
+              >
+                <LogOut size={14} /> 
+                <span style={{ display: "inline" }}>{account.substring(0,4)}...{account.substring(account.length-4)}</span>
+              </button>
+            </div>
+          ) : (
+            <button onClick={connectWallet} disabled={connecting} style={{ backgroundColor: "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: "10px", fontWeight: "bold", cursor: connecting ? "not-allowed" : "pointer", opacity: connecting ? 0.7 : 1 }}>
+              {connecting ? "⏳ Connecting..." : "🔌 Connect Wallet"}
+            </button>
+          )}
         </div>
       </header>
 
@@ -594,7 +626,6 @@ function App() {
         {/* ===== TAB SWAP ===== */}
         {activeTab === "swap" && (
           <div style={{ backgroundColor: "#111827", borderRadius: "16px", padding: "20px", border: "1px solid #1e293b" }}>
-            {/* Slippage Setting */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px" }}>
               <button onClick={() => setShowSlippageModal(true)} style={{ backgroundColor: "#1e293b", border: "none", color: "#94a3b8", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
                 <Settings size={14} /> Slippage: {slippage}%
@@ -651,7 +682,6 @@ function App() {
         {activeTab === "pool" && (
           <div style={{ backgroundColor: "#111827", borderRadius: "16px", padding: "20px", border: "1px solid #1e293b" }}>
             
-            {/* ===== STATISTIK POOL ===== */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
               <div style={{ backgroundColor: "#0f172a", padding: "12px", borderRadius: "12px", textAlign: "center" }}>
                 <div style={{ fontSize: "11px", color: "#94a3b8" }}>Total Likuiditas</div>
@@ -663,7 +693,6 @@ function App() {
               </div>
             </div>
 
-            {/* Grafik Sederhana */}
             <div style={{ backgroundColor: "#0f172a", padding: "12px", borderRadius: "12px", marginBottom: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
                 <span>Harga USDC/DAI</span>
@@ -683,7 +712,6 @@ function App() {
               </div>
             </div>
 
-            {/* Add Liquidity */}
             <div style={{ borderTop: "1px solid #1e293b", paddingTop: "12px" }}>
               <div style={{ fontSize: "13px", fontWeight: "bold", color: "#fbbf24", marginBottom: "8px" }}>
                 <Droplets size={16} style={{ display: "inline", marginRight: "6px" }} /> Tambah Likuiditas
