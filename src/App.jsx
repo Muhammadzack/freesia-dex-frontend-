@@ -1,3 +1,4 @@
+import { Toaster } from 'react-hot-toast';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 
@@ -455,6 +456,8 @@ export default function App() {
           </div>
         )}
       </main>
+      
+     < import { Toaster } from 'react-hot-toast';
 
       {/* 🌸 FOOTER LOGO FREESIA */}
       <footer style={styles.footer}>
