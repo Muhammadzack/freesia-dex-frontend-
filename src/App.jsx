@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 
-// 🌸 LOGO FREESIA (Disesuaikan untuk Tema Terang)
+// 🌸 LOGO FREESIA VECTOR
 const FreesiaLogo = () => (
   <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M50 50 C50 20, 35 25, 50 10 C65 25, 50 20, 50 50" fill="#FFA6C9" />
@@ -12,41 +12,37 @@ const FreesiaLogo = () => (
     <path d="M50 50 C70 70, 80 55, 78 78 C55 80, 70 70, 50 50" fill="#FFB6D9" />
     <path d="M50 50 C70 30, 55 20, 78 22 C80 45, 70 30, 50 50" fill="#FFB6D9" />
     <path d="M50 50 C30 70, 45 80, 22 78 C20 55, 30 70, 50 50" fill="#FFB6D9" />
-    {/* Huruf F berwarna Biru Gelap (Navy) agar kontras di tema terang */}
     <path d="M60 25 C52 22, 44 30, 44 42 L44 78 M34 45 L56 45" stroke="#0F172A" strokeWidth="8" strokeLinecap="round" fill="none" />
   </svg>
 );
 
-// 🛠 KONFIGURASI SMART CONTRACT LITVM
 const CONTRACTS = {
-  tokenA: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701",
-  tokenB: "0x9013443A3E0Dd775152678a76fceDCBase54e1E1710",
   pool: "0xbDA6416a9420fD9fC012A21930c803dA7F3f0f91",
 };
 
 const SimpleERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function approve(address spender, uint256 value) returns (bool)",
-  "function mint(address to, uint256 amount) external"
+  "function mint(address to, uint256 amount) external",
+  "function symbol() view returns (string)"
 ];
 
 const SimpleLiquidityPool_ABI = [
-  "function getReserves() view returns (uint256, uint256)",
   "function swap(address fromToken, uint256 amountIn) external returns (uint256)",
   "function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256)"
 ];
 
-// 🎨 STYLING (TEMA DASHBOARD TERANG SEPERTI GAMBAR 2)
 const styles = {
-  layout: { backgroundColor: "#F9F8F6", color: "#0F172A", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
+  layout: { backgroundColor: "#F9F8F6", color: "#0F172A", minHeight: "100vh", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0" },
   navContainer: { display: "flex", gap: "10px", padding: "20px 24px", overflowX: "auto" },
   navTab: (isActive) => ({ padding: "10px 20px", borderRadius: "12px", border: "none", fontWeight: "bold", cursor: "pointer", backgroundColor: isActive ? "#FDC500" : "#F1F5F9", color: isActive ? "#000" : "#64748B", transition: "0.2s" }),
-  mainContent: { padding: "0 24px 40px 24px", maxWidth: "1000px", margin: "0 auto" },
+  mainContent: { padding: "0 24px 40px 24px", maxWidth: "1000px", margin: "0 auto", flexGrow: 1, width: "100%", boxSizing: "border-box" },
   card: { backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "24px", border: "1px solid #E2E8F0", boxShadow: "0 4px 6px rgba(0,0,0,0.02)", marginBottom: "20px" },
   button: { backgroundColor: "#FDC500", color: "#000", border: "none", padding: "16px", borderRadius: "12px", fontWeight: "900", cursor: "pointer", width: "100%", fontSize: "16px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" },
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
-  input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" }
+  input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
+  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", borderTop: "1px solid #E2E8F0", marginTop: "auto" }
 };
 
 export default function App() {
@@ -55,94 +51,147 @@ export default function App() {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   
-  // States untuk DEX
-  const [balances, setBalances] = useState({ USDC: "0.00", DAI: "0.00", zkLTC: "0.00" });
+  // Dynamic Token List
+  const [tokens, setTokens] = useState({
+    zkLTC: { address: "NATIVE", isNative: true },
+    USDC: { address: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701", isNative: false },
+    DAI: { address: "0x9013443A3E0Dd775152678a76fceDCBase54e1E1710", isNative: false }
+  });
+  
+  const [balances, setBalances] = useState({});
+  const [fromSym, setFromSym] = useState("USDC");
+  const [toSym, setToSym] = useState("DAI");
   const [amountIn, setAmountIn] = useState("");
+  const [poolTokenA, setPoolTokenA] = useState("USDC");
+  const [poolTokenB, setPoolTokenB] = useState("DAI");
   const [amountAInput, setAmountAInput] = useState("");
   const [amountBInput, setAmountBInput] = useState("");
+  
+  // Custom Token Input
+  const [customAddress, setCustomAddress] = useState("");
+  const [customSymbol, setCustomSymbol] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI DOMPET
+  // 🦊 KONEKSI WALLET
   const connectWallet = async () => {
-    if (!window.ethereum) return alert("Gunakan MetaMask/Mises Browser!");
+    if (!window.ethereum) return alert("Install MetaMask/Mises!");
     try {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await web3Provider.send("eth_requestAccounts", []);
-      const web3Signer = await web3Provider.getSigner();
       setProvider(web3Provider);
-      setSigner(web3Signer);
+      setSigner(await web3Provider.getSigner());
       setAccount(accounts[0]);
-      updateData(web3Provider, accounts[0]);
     } catch (err) { console.error(err); }
   };
 
-  // 📊 BACA DATA SALDO
-  const updateData = async (prov = provider, acc = account) => {
-    if (!prov || !acc) return;
+  // ⚡ DETEKSI SALDO CEPAT
+  const updateData = useCallback(async () => {
+    if (!provider || !account) return;
     try {
-      const nativeBal = await prov.getBalance(acc);
-      const contractA = new ethers.Contract(CONTRACTS.tokenA, SimpleERC20_ABI, prov);
-      const contractB = new ethers.Contract(CONTRACTS.tokenB, SimpleERC20_ABI, prov);
-      
-      const balA = await contractA.balanceOf(acc);
-      const balB = await contractB.balanceOf(acc);
-      
-      setBalances({
-        USDC: parseFloat(ethers.formatUnits(balA, 18)).toFixed(2),
-        DAI: parseFloat(ethers.formatUnits(balB, 18)).toFixed(2),
-        zkLTC: parseFloat(ethers.formatEther(nativeBal)).toFixed(4)
-      });
-    } catch (err) { console.error("Update data error:", err); }
+      let newBalances = {};
+      for (const [sym, data] of Object.entries(tokens)) {
+        if (data.isNative) {
+          const bal = await provider.getBalance(account);
+          newBalances[sym] = parseFloat(ethers.formatEther(bal)).toFixed(4);
+        } else {
+          const contract = new ethers.Contract(data.address, SimpleERC20_ABI, provider);
+          const bal = await contract.balanceOf(account).catch(() => 0n);
+          newBalances[sym] = parseFloat(ethers.formatUnits(bal, 18)).toFixed(2);
+        }
+      }
+      setBalances(newBalances);
+    } catch (err) { console.error("Balance fetch error"); }
+  }, [provider, account, tokens]);
+
+  // Polling setiap 4 detik
+  useEffect(() => {
+    if (provider && account) {
+      updateData();
+      const interval = setInterval(updateData, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [provider, account, tokens, updateData]);
+
+  // ➕ TAMBAH TOKEN CUSTOM
+  const handleAddToken = () => {
+    if (!customAddress || !customSymbol) return alert("Isi alamat dan simbol token!");
+    setTokens(prev => ({ ...prev, [customSymbol.toUpperCase()]: { address: customAddress, isNative: false } }));
+    alert(`${customSymbol.toUpperCase()} berhasil ditambahkan!`);
+    setCustomAddress(""); setCustomSymbol("");
+    updateData();
   };
 
-  // 💱 FUNGSI SWAP Ethers v6
+  // 💱 FUNGSI SWAP LENGKAP (NATIVE & ERC20)
   const handleSwap = async () => {
     if (!signer || !amountIn) return alert("Masukkan jumlah!");
     setLoading(true);
     try {
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
-      const tokenContract = new ethers.Contract(CONTRACTS.tokenA, SimpleERC20_ABI, signer);
       
-      // Approve
-      const tx1 = await tokenContract.approve(CONTRACTS.pool, parsedIn);
-      await tx1.wait();
-      
-      // Swap
-      const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
-      const tx2 = await poolContract.swap(CONTRACTS.tokenA, parsedIn, { gasLimit: 400000 });
-      await tx2.wait();
+      if (tokens[fromSym].isNative) {
+        // Simulasi Native zkLTC Swap (Kirim transaksi kosong untuk simulasi gas on-chain)
+        const tx = await signer.sendTransaction({ to: account, value: 0 });
+        await tx.wait();
+      } else {
+        // Standar ERC20 Swap
+        const tokenContract = new ethers.Contract(tokens[fromSym].address, SimpleERC20_ABI, signer);
+        await (await tokenContract.approve(CONTRACTS.pool, parsedIn)).wait();
+        
+        const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
+        await (await poolContract.swap(tokens[fromSym].address, parsedIn, { gasLimit: 400000 })).wait();
+      }
       
       alert("Swap Berhasil!");
       setTxCount(prev => prev + 1);
       setAmountIn("");
       updateData();
-    } catch (err) {
-      console.error(err);
-      alert("Transaksi gagal. Pastikan memiliki gas fee zkLTC.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); alert("Swap Gagal. Pastikan gas fee cukup."); } 
+    finally { setLoading(false); }
   };
 
-  // 🚰 FUNGSI MINT FAUCET
-  const handleMint = async (tokenAddress) => {
+  // 🚰 FUNGSI MINT LENGKAP
+  const handleMint = async (sym) => {
     if (!signer) return alert("Hubungkan dompet!");
     setLoading(true);
     try {
-      const contract = new ethers.Contract(tokenAddress, SimpleERC20_ABI, signer);
-      const tx = await contract.mint(account, ethers.parseUnits("10000", 18));
-      await tx.wait();
-      alert("Mint 10,000 Token Berhasil!");
+      const contract = new ethers.Contract(tokens[sym].address, SimpleERC20_ABI, signer);
+      await (await contract.mint(account, ethers.parseUnits("10000", 18))).wait();
+      alert(`Mint 10,000 ${sym} Berhasil!`);
       setTxCount(prev => prev + 1);
       updateData();
     } catch (err) { console.error(err); alert("Mint Gagal."); }
     setLoading(false);
   };
 
+  // 💧 FUNGSI ADD LIQUIDITY
+  const handleAddLiquidity = async () => {
+    if (!signer || !amountAInput || !amountBInput) return alert("Isi nominal!");
+    setLoading(true);
+    try {
+      const pA = ethers.parseUnits(String(amountAInput), 18);
+      const pB = ethers.parseUnits(String(amountBInput), 18);
+      const tokenAContract = new ethers.Contract(tokens[poolTokenA].address, SimpleERC20_ABI, signer);
+      const tokenBContract = new ethers.Contract(tokens[poolTokenB].address, SimpleERC20_ABI, signer);
+      
+      await (await tokenAContract.approve(CONTRACTS.pool, pA)).wait();
+      await (await tokenBContract.approve(CONTRACTS.pool, pB)).wait();
+      
+      const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
+      await (await poolContract.addLiquidity(pA, pB, { gasLimit: 500000 })).wait();
+      
+      alert("Likuiditas Berhasil Ditambahkan!");
+      setTxCount(prev => prev + 1);
+      setAmountAInput(""); setAmountBInput("");
+      updateData();
+    } catch (err) { console.error(err); alert("Gagal tambah likuiditas."); }
+    setLoading(false);
+  };
+
   return (
     <div style={styles.layout}>
-      {/* 1. HEADER MIRIP REFERENSI */}
+      {/* 1. HEADER DENGAN LOGO X */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <FreesiaLogo />
@@ -151,47 +200,39 @@ export default function App() {
             <span style={{ fontSize: "11px", color: "#64748B", fontWeight: "bold" }}>LITVM TESTNET</span>
           </div>
         </div>
-        <button onClick={connectWallet} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
-          {account ? `🟢 ${account.substring(0, 6)}...${account.substring(account.length - 4)}` : "Connect Wallet"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <a href="https://x.com" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
+          <button onClick={connectWallet} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
+            {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
+          </button>
+        </div>
       </header>
 
-      {/* 2. MENU NAVIGASI */}
+      {/* 2. MENU NAVIGASI (TERMASUK TAB IMPORT) */}
       <div style={styles.navContainer}>
-        {["dashboard", "swap", "mint", "pool"].map(tab => (
+        {["dashboard", "swap", "mint", "pool", "import"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={styles.navTab(activeTab === tab)}>
             {tab.toUpperCase()}
           </button>
         ))}
       </div>
 
-      {/* 3. KONTEN UTAMA */}
       <main style={styles.mainContent}>
         
-        {/* --- TAB DASHBOARD (Seperti Gambar 2) --- */}
+        {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
-            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>GLOBAL NETWORK STATS</h2>
+            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEADERBOARD</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px", marginBottom: "32px" }}>
               <div style={styles.card}>
-                <span style={{ color: "#64748B", fontSize: "12px", fontWeight: "bold" }}>GLOBAL SWAPPED</span>
-                <h2 style={{ margin: "8px 0 0 0", fontSize: "28px" }}>$45,210</h2>
-                <span style={{ color: "#10B981", fontSize: "12px" }}>↑ Active Testnet</span>
-              </div>
-              <div style={styles.card}>
-                <span style={{ color: "#64748B", fontSize: "12px", fontWeight: "bold" }}>YOUR ACTIVITY (TXNS)</span>
+                <span style={{ color: "#64748B", fontSize: "12px", fontWeight: "bold" }}>AKTIVITAS ON-CHAIN (TXNS)</span>
                 <h2 style={{ margin: "8px 0 0 0", fontSize: "28px" }}>{txCount}</h2>
-                <span style={{ color: "#F59E0B", fontSize: "12px" }}>Points: {txCount * 15} XP</span>
+                <span style={{ color: "#10B981", fontSize: "12px" }}>Reputasi: {txCount * 15} XP Pts</span>
               </div>
             </div>
-
-            <h2 style={{ fontSize: "14px", color: "#64748B" }}>LEADERBOARD & RECENT</h2>
             <div style={{ ...styles.card, padding: "0" }}>
               <div style={{ padding: "16px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between" }}>
                 <span>🏆 0x71C...392b</span><strong>240 XP</strong>
-              </div>
-              <div style={{ padding: "16px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between" }}>
-                <span>🥈 0x3fA...110e</span><strong>180 XP</strong>
               </div>
               <div style={{ padding: "16px 24px", backgroundColor: "#FFFBEB", display: "flex", justifyContent: "space-between", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
                 <span>👉 Anda ({account ? account.substring(0,6) : "Anon"})</span><strong style={{ color: "#D97706" }}>{txCount * 15} XP</strong>
@@ -200,70 +241,124 @@ export default function App() {
           </div>
         )}
 
-        {/* --- TAB SWAP (Fungsional) --- */}
+        {/* TAB SWAP */}
         {activeTab === "swap" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
               <div style={styles.inputBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B", fontSize: "13px" }}>
-                  <span>Anda Membayar (USDC)</span>
-                  <span>Saldo: {balances.USDC}</span>
+                  <span>Anda Membayar</span>
+                  <span>Saldo: {balances[fromSym] || "0.00"}</span>
                 </div>
-                <input style={styles.input} type="number" placeholder="0.00" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} />
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input style={styles.input} type="number" placeholder="0.00" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} />
+                  <select value={fromSym} onChange={(e) => setFromSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff" }}>
+                    {Object.keys(tokens).map(sym => <option key={sym} value={sym}>{sym}</option>)}
+                  </select>
+                </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "center", margin: "-28px 0 12px 0", position: "relative", zIndex: 2 }}>
-                <div style={{ backgroundColor: "#FFFFFF", border: "1px solid #E2E8F0", padding: "8px", borderRadius: "50%" }}>⇅</div>
+              <div style={{ textAlign: "center", margin: "-20px 0 10px 0", zIndex: 2, position: "relative" }}>
+                <span style={{ backgroundColor: "#FFF", border: "1px solid #E2E8F0", padding: "6px 12px", borderRadius: "50%" }}>⇅</span>
               </div>
 
               <div style={styles.inputBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B", fontSize: "13px" }}>
-                  <span>Anda Menerima (DAI - Estimasi)</span>
-                  <span>Saldo: {balances.DAI}</span>
+                  <span>Menerima (Estimasi)</span>
+                  <span>Saldo: {balances[toSym] || "0.00"}</span>
                 </div>
-                <input style={styles.input} type="number" placeholder="0.00" value={amountIn ? (amountIn * 0.99).toFixed(2) : ""} readOnly />
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input style={styles.input} type="number" placeholder="0.00" value={amountIn ? (amountIn * 0.99).toFixed(4) : ""} readOnly />
+                  <select value={toSym} onChange={(e) => setToSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff" }}>
+                    {Object.keys(tokens).map(sym => <option key={sym} value={sym}>{sym}</option>)}
+                  </select>
+                </div>
               </div>
 
               <button style={styles.button} onClick={handleSwap} disabled={loading || !amountIn}>
-                {loading ? (
-                  <><img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="minion" style={{ width: "24px", animation: "spin 2s linear infinite" }} /> Memproses...</>
-                ) : "Tukar Token"}
+                {loading ? <><img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="minion" style={{ width: "24px", animation: "spin 2s linear infinite" }} /> Memproses...</> : "Tukar Token"}
               </button>
             </div>
           </div>
         )}
 
-        {/* --- TAB MINT FAUCET --- */}
+        {/* TAB MINT FAUCET */}
         {activeTab === "mint" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
               <h3 style={{ marginTop: 0 }}>Klaim Faucet Testnet</h3>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", border: "1px solid #E2E8F0", borderRadius: "12px", marginBottom: "12px" }}>
-                <div><strong>USDC</strong><div style={{ fontSize: "12px", color: "#64748B" }}>Saldo: {balances.USDC}</div></div>
-                <button onClick={() => handleMint(CONTRACTS.tokenA)} style={{ backgroundColor: "#FDC500", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold" }}>Mint 10k</button>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", border: "1px solid #E2E8F0", borderRadius: "12px" }}>
-                <div><strong>DAI</strong><div style={{ fontSize: "12px", color: "#64748B" }}>Saldo: {balances.DAI}</div></div>
-                <button onClick={() => handleMint(CONTRACTS.tokenB)} style={{ backgroundColor: "#FDC500", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold" }}>Mint 10k</button>
-              </div>
+              {Object.entries(tokens).filter(([_, data]) => !data.isNative).map(([sym, _]) => (
+                <div key={sym} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", border: "1px solid #E2E8F0", borderRadius: "12px", marginBottom: "12px" }}>
+                  <div><strong>{sym}</strong><div style={{ fontSize: "12px", color: "#64748B" }}>Saldo: {balances[sym] || "0.00"}</div></div>
+                  <button onClick={() => handleMint(sym)} style={{ backgroundColor: "#FDC500", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>Mint 10k</button>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* --- TAB POOL --- */}
+        {/* TAB POOL (LIKUIDITAS) */}
         {activeTab === "pool" && (
            <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
               <h3 style={{ marginTop: 0 }}>Suntik Likuiditas (Pool)</h3>
-              <p style={{ fontSize: "13px", color: "#64748B" }}>Fitur penambahan likuiditas sedang dioptimalkan. Silakan gunakan tab Swap untuk menguji transaksi jaringan.</p>
-              <button onClick={() => setActiveTab("swap")} style={styles.button}>Kembali ke Swap</button>
+              
+              <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Token A</span>
+                  <select value={poolTokenA} onChange={(e) => setPoolTokenA(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0", marginTop: "6px" }}>
+                    {Object.keys(tokens).filter(t => !tokens[t].isNative).map(sym => <option key={sym} value={sym}>{sym}</option>)}
+                  </select>
+                  <input type="number" placeholder="Jumlah" value={amountAInput} onChange={(e) => setAmountAInput(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0", marginTop: "10px", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Token B</span>
+                  <select value={poolTokenB} onChange={(e) => setPoolTokenB(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0", marginTop: "6px" }}>
+                    {Object.keys(tokens).filter(t => !tokens[t].isNative).map(sym => <option key={sym} value={sym}>{sym}</option>)}
+                  </select>
+                  <input type="number" placeholder="Jumlah" value={amountBInput} onChange={(e) => setAmountBInput(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0", marginTop: "10px", boxSizing: "border-box" }} />
+                </div>
+              </div>
+
+              <button style={styles.button} onClick={handleAddLiquidity} disabled={loading}>
+                {loading ? <><img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="minion" style={{ width: "24px", animation: "spin 2s linear infinite" }} /> Memproses...</> : "Tambah Likuiditas"}
+              </button>
             </div>
            </div>
         )}
 
+        {/* TAB IMPORT TOKEN BARU */}
+        {activeTab === "import" && (
+          <div style={{ maxWidth: "480px", margin: "0 auto" }}>
+            <div style={styles.card}>
+              <h3 style={{ marginTop: 0 }}>Import Token Kustom</h3>
+              <p style={{ fontSize: "13px", color: "#64748B", marginBottom: "20px" }}>Masukkan smart contract token ERC20 untuk menambahkannya ke dalam DEX.</p>
+              
+              <div style={styles.inputBox}>
+                <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Alamat Kontrak (0x...)</span>
+                <input style={{ ...styles.input, fontSize: "16px" }} type="text" placeholder="0x123..." value={customAddress} onChange={(e) => setCustomAddress(e.target.value)} />
+              </div>
+              
+              <div style={styles.inputBox}>
+                <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Simbol Token (cth: PEPE)</span>
+                <input style={{ ...styles.input, fontSize: "16px" }} type="text" placeholder="PEPE" value={customSymbol} onChange={(e) => setCustomSymbol(e.target.value.toUpperCase())} />
+              </div>
+
+              <button style={styles.button} onClick={handleAddToken}>+ Tambahkan Token</button>
+            </div>
+          </div>
+        )}
+
       </main>
+
+      {/* 🍌 MINION FOOTER ELEGAN */}
+      <footer style={styles.footer}>
+        <img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="Minion Worker" style={{ width: "60px", opacity: 0.9, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))" }} />
+        <p style={{ fontSize: "13px", fontWeight: "bold", color: "#475569", marginTop: "12px", letterSpacing: "0.5px" }}>
+          POWERED BY MINION WORKERS & FREESIA NETWORK
+        </p>
+      </footer>
       
-      {/* Animasi Global untuk Minion */}
       <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
