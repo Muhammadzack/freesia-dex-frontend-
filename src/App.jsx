@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 
 // 🌸 LOGO FREESIA VECTOR
 const FreesiaLogo = () => (
-  <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="45" height="45" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M50 50 C50 20, 35 25, 50 10 C65 25, 50 20, 50 50" fill="#FFA6C9" />
     <path d="M50 50 C50 80, 65 75, 50 90 C35 75, 50 80, 50 50" fill="#FFA6C9" />
     <path d="M50 50 C20 50, 25 35, 10 50 C25 65, 20 50, 50 50" fill="#FFA6C9" />
@@ -40,9 +40,8 @@ const styles = {
   button: { backgroundColor: "#FDC500", color: "#000", border: "none", padding: "16px", borderRadius: "12px", fontWeight: "900", cursor: "pointer", width: "100%", fontSize: "16px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" },
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
   input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
-  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto" },
+  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto", borderTop: "1px solid #E2E8F0" },
   
-  // Modal Styles (Putih & Kuning Minion)
   modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "20px" },
   modalContent: { backgroundColor: "#FFFFFF", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "380px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", border: "1px solid #FDC500" },
   walletBtnActive: { width: "100%", padding: "16px", borderRadius: "16px", border: "2px solid #FDC500", backgroundColor: "#FFFBEB", fontSize: "16px", fontWeight: "bold", color: "#0F172A", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", transition: "0.2s" },
@@ -76,7 +75,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 FUNGSI KONEKSI WALLET UTAMA (Hanya MetaMask/Rabby)
+  // 🦊 KONEKSI DOMPET (DIPERBAIKI AGAR TIDAK ERROR)
   const connectPrimaryWallet = async () => {
     if (!window.ethereum) {
       alert("Browser Web3 (MetaMask/Rabby/Mises) tidak terdeteksi!");
@@ -84,22 +83,16 @@ export default function App() {
     }
     try {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      
-      // Auto Switch ke LitVM Testnet
-      try {
-        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x1159' }] });
-      } catch (switchError) {
-        console.log("Jaringan LitVM belum ada atau user menolak switch.");
-      }
-
+      // Langsung request account tanpa auto-switch network terlebih dahulu
       const accounts = await web3Provider.send("eth_requestAccounts", []);
+      
       setProvider(web3Provider);
       setSigner(await web3Provider.getSigner());
       setAccount(accounts[0]);
-      setShowWalletModal(false); // Tutup modal setelah sukses
+      setShowWalletModal(false); // Berhasil terhubung, tutup modal!
     } catch (err) { 
-      // Abaikan jika user sekadar menutup popup metamask, jangan kasih alert aneh
-      if(err.code !== 4001) console.error("Koneksi gagal:", err); 
+      console.error("Koneksi gagal:", err); 
+      alert("Gagal menghubungkan. Pastikan Anda mengizinkan koneksi di aplikasi dompet Anda.");
     }
   };
 
@@ -198,7 +191,7 @@ export default function App() {
   return (
     <div style={styles.layout}>
       
-      {/* 🔮 MODAL CONNECT WALLET (WARNA PUTIH & KUNING) */}
+      {/* 🔮 MODAL CONNECT WALLET */}
       {showWalletModal && (
         <div style={styles.modalOverlay} onClick={() => setShowWalletModal(false)}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
@@ -208,7 +201,6 @@ export default function App() {
             </div>
             
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {/* Tombol Utama (Aktif) */}
               <button onClick={connectPrimaryWallet} style={styles.walletBtnActive}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <span style={{ fontSize: "22px" }}>🦊</span>
@@ -221,7 +213,6 @@ export default function App() {
                 )}
               </button>
 
-              {/* Tombol Lainnya (Coming Soon) */}
               {["Bitget Wallet", "OKX Wallet", "Trust Wallet"].map(wallet => (
                 <div key={wallet} style={styles.walletBtnDisabled}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -236,14 +227,13 @@ export default function App() {
         </div>
       )}
 
-      {/* 1. HEADER */}
+      {/* 1. HEADER (BULATAN HIJAU DIHAPUS) */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <FreesiaLogo />
           <div>
             <h1 style={{ fontSize: "20px", margin: 0, fontWeight: "900", color: "#0F172A" }}>Freesia DEX</h1>
-            {/* Teks Header Diperbarui Menjadi 'LitVM Testnet' */}
-            <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>🟢 LitVM Testnet</span>
+            <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>LitVM Testnet</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -264,7 +254,6 @@ export default function App() {
       </div>
 
       <main style={styles.mainContent}>
-        
         {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
@@ -391,24 +380,21 @@ export default function App() {
         )}
       </main>
 
-      {/* 🍌 MINION FOOTER ELEGAN (Bounce Animation) */}
+      {/* 🌸 FOOTER LOGO FREESIA (EFEK PULSE ANIMATION) */}
       <footer style={styles.footer}>
-        <img 
-          src="/minion-happy.png" 
-          alt="Minion Worker" 
-          style={{ width: "100px", animation: "bounce 2s infinite ease-in-out", filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.15))" }} 
-        />
-        <p style={{ fontSize: "12px", fontWeight: "bold", color: "#94A3B8", marginTop: "16px", letterSpacing: "1px" }}>
-          POWERED BY MINION WORKERS
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", animation: "pulse 3s infinite ease-in-out" }}>
+          <FreesiaLogo />
+        </div>
+        <p style={{ fontSize: "12px", fontWeight: "bold", color: "#94A3B8", letterSpacing: "1px", margin: 0 }}>
+          POWERED BY FREESIA NETWORK
         </p>
       </footer>
       
       {/* Animasi Global */}
       <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes bounce { 
-          0%, 100% { transform: translateY(0); } 
-          50% { transform: translateY(-12px); } 
+        @keyframes pulse { 
+          0%, 100% { transform: scale(1); opacity: 0.9; } 
+          50% { transform: scale(1.08); opacity: 1; } 
         }
       `}</style>
     </div>
