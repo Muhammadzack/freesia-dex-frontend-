@@ -75,29 +75,30 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 METODE KONEKSI MODERAT & COCOK UNTUK SEMUA BROWSER/EXTENSION
+  // 🦊 KONEKSI WALLET DENGAN CEK PENGAMAN ANTI-CRASH
   const connectPrimaryWallet = async () => {
-    if (!window.ethereum) {
-      alert("Sila buka laman ini melalui Mises Browser, MetaMask App, atau browser Web3 yang memiliki extension Rabby/MetaMask!");
-      return;
-    }
-    try {
-      // Langkah 1: Minta izin akun secara langsung dari inframerah window.ethereum dasar
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      if (accounts && accounts.length > 0) {
-        // Langkah 2: Baru bungkus objek ke dalam Ethers BrowserProvider setelah akun diizinkan
-        const web3Provider = new ethers.BrowserProvider(window.ethereum);
-        const web3Signer = await web3Provider.getSigner();
+    // 1. Cek secara aman apakah window.ethereum tersedia
+    if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
+      try {
+        // 2. Gunakan cara pemanggilan dasar yang dijamin kompatibel
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         
-        setProvider(web3Provider);
-        setSigner(web3Signer);
-        setAccount(accounts[0]);
-        setShowWalletModal(false);
+        if (accounts && accounts.length > 0) {
+          const web3Provider = new ethers.BrowserProvider(window.ethereum);
+          const web3Signer = await web3Provider.getSigner();
+          
+          setProvider(web3Provider);
+          setSigner(web3Signer);
+          setAccount(accounts[0]);
+          setShowWalletModal(false);
+        }
+      } catch (err) { 
+        console.error("User menolak koneksi:", err);
       }
-    } catch (err) { 
-      console.error("Koneksi gagal total:", err);
-      alert("Gagal terhubung. Pastikan popup dompet terbuka dan berikan konfirmasi persetujuan.");
+    } else {
+      // 3. Fallback jika dibuka di browser biasa (Chrome/Safari biasa)
+      alert("Dompet Crypto tidak terdeteksi! Harap buka link Vercel ini langsung di dalam Browser Dompet MetaMask kamu (Tab DApp Browser) atau menggunakan Mises Browser!");
+      setShowWalletModal(false);
     }
   };
 
@@ -264,7 +265,7 @@ export default function App() {
         {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
-            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEADERBOARD</h2>
+            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEABORBOARD</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px", marginBottom: "32px" }}>
               <div style={styles.card}>
                 <span style={{ color: "#64748B", fontSize: "12px", fontWeight: "bold" }}>AKTIVITAS ON-CHAIN (TXNS)</span>
@@ -387,7 +388,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 🌸 FOOTER LOGO FREESIA DENGAN EFEK PULSE ANIMATION */}
+      {/* 🌸 FOOTER LOGO FREESIA */}
       <footer style={styles.footer}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", animation: "pulse 3s infinite ease-in-out" }}>
           <FreesiaLogo />
