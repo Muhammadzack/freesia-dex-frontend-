@@ -457,7 +457,7 @@ export default function App() {
         )}
       </main>
       
-     <<Toaster position="bottom-right" />
+     <Toaster position="bottom-right" />
     
       {/* 🌸 FOOTER LOGO FREESIA */}
       <footer style={styles.footer}>
