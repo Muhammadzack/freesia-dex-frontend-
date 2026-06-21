@@ -457,8 +457,8 @@ export default function App() {
         )}
       </main>
       
-     <import { Toaster } from 'react-hot-toast';
-
+     <<Toaster position="bottom-right" />
+    
       {/* 🌸 FOOTER LOGO FREESIA */}
       <footer style={styles.footer}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", animation: "pulse 3s infinite ease-in-out" }}>
