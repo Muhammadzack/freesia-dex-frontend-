@@ -40,17 +40,11 @@ const styles = {
   button: { backgroundColor: "#FDC500", color: "#000", border: "none", padding: "16px", borderRadius: "12px", fontWeight: "900", cursor: "pointer", width: "100%", fontSize: "16px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" },
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
   input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
-  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto", borderTop: "1px solid #E2E8F0" },
-  
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "20px" },
-  modalContent: { backgroundColor: "#FFFFFF", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "380px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", border: "1px solid #FDC500" },
-  walletBtnActive: { width: "100%", padding: "16px", borderRadius: "16px", border: "2px solid #FDC500", backgroundColor: "#FFFBEB", fontSize: "16px", fontWeight: "bold", color: "#0F172A", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", transition: "0.2s" },
-  walletBtnDisabled: { width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: "16px", fontWeight: "bold", color: "#94A3B8", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", opacity: 0.8 }
+  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto", borderTop: "1px solid #E2E8F0" }
 };
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [account, setAccount] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -75,14 +69,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI WALLET DENGAN CEK PENGAMAN ANTI-CRASH
-  const connectPrimaryWallet = async () => {
-    // 1. Cek secara aman apakah window.ethereum tersedia
+  // 🦊 METODE KONEKSI KEMBALI SEPERTI AWAL (DIRECT CALL ANTI-GAGAL)
+  const connectWallet = async () => {
     if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
       try {
-        // 2. Gunakan cara pemanggilan dasar yang dijamin kompatibel
+        // Panggil langsung tanpa melalui state modal internal react
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        
         if (accounts && accounts.length > 0) {
           const web3Provider = new ethers.BrowserProvider(window.ethereum);
           const web3Signer = await web3Provider.getSigner();
@@ -90,15 +82,12 @@ export default function App() {
           setProvider(web3Provider);
           setSigner(web3Signer);
           setAccount(accounts[0]);
-          setShowWalletModal(false);
         }
       } catch (err) { 
-        console.error("User menolak koneksi:", err);
+        console.error("Koneksi ditolak:", err);
       }
     } else {
-      // 3. Fallback jika dibuka di browser biasa (Chrome/Safari biasa)
-      alert("Dompet Crypto tidak terdeteksi! Harap buka link Vercel ini langsung di dalam Browser Dompet MetaMask kamu (Tab DApp Browser) atau menggunakan Mises Browser!");
-      setShowWalletModal(false);
+      alert("Browser Web3 tidak terdeteksi! Pastikan buka lewat dApp Browser MetaMask/Rabby.");
     }
   };
 
@@ -199,42 +188,6 @@ export default function App() {
   return (
     <div style={styles.layout}>
       
-      {/* 🔮 MODAL CONNECT WALLET */}
-      {showWalletModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowWalletModal(false)}>
-          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h3 style={{ margin: 0, color: "#0F172A", fontSize: "20px", fontWeight: "900" }}>Pilih Dompet</h3>
-              <button onClick={() => setShowWalletModal(false)} style={{ background: "#F1F5F9", border: "none", width: "32px", height: "32px", borderRadius: "50%", fontWeight: "bold", cursor: "pointer", color: "#64748B" }}>✕</button>
-            </div>
-            
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <button onClick={connectPrimaryWallet} style={styles.walletBtnActive}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "22px" }}>🦊</span>
-                  <span>MetaMask / Rabby</span>
-                </div>
-                {account ? (
-                  <span style={{ backgroundColor: "#D1FAE5", color: "#059669", padding: "4px 10px", borderRadius: "8px", fontSize: "11px", fontWeight: "900" }}>Terkoneksi 🟢</span>
-                ) : (
-                  <span style={{ color: "#D97706" }}>→</span>
-                )}
-              </button>
-
-              {["Bitget Wallet", "OKX Wallet", "Trust Wallet"].map(wallet => (
-                <div key={wallet} style={styles.walletBtnDisabled}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "20px", opacity: 0.5 }}>💼</span>
-                    <span>{wallet}</span>
-                  </div>
-                  <span style={{ backgroundColor: "#FEF3C7", color: "#D97706", padding: "4px 8px", borderRadius: "8px", fontSize: "10px", fontWeight: "900", letterSpacing: "0.5px" }}>SEGERA HADIR</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 1. HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -246,7 +199,8 @@ export default function App() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
-          <button onClick={() => setShowWalletModal(true)} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: "pointer" }}>
+          {/* Tombol Langsung Memicu connectWallet Tanpa Modal */}
+          <button onClick={connectWallet} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: "pointer" }}>
             {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
           </button>
         </div>
@@ -265,7 +219,7 @@ export default function App() {
         {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
-            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEABORBOARD</h2>
+            <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEADERBOARD</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px", marginBottom: "32px" }}>
               <div style={styles.card}>
                 <span style={{ color: "#64748B", fontSize: "12px", fontWeight: "bold" }}>AKTIVITAS ON-CHAIN (TXNS)</span>
