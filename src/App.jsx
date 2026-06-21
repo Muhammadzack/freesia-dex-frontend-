@@ -42,11 +42,14 @@ const styles = {
   button: { backgroundColor: "#FDC500", color: "#000", border: "none", padding: "16px", borderRadius: "12px", fontWeight: "900", cursor: "pointer", width: "100%", fontSize: "16px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" },
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
   input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
-  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", borderTop: "1px solid #E2E8F0", marginTop: "auto" }
+  footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto" },
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "20px" },
+  modalContent: { backgroundColor: "#FFF", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }
 };
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [account, setAccount] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -66,24 +69,30 @@ export default function App() {
   const [poolTokenB, setPoolTokenB] = useState("DAI");
   const [amountAInput, setAmountAInput] = useState("");
   const [amountBInput, setAmountBInput] = useState("");
-  
-  // Custom Token Input
   const [customAddress, setCustomAddress] = useState("");
   const [customSymbol, setCustomSymbol] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI WALLET
-  const connectWallet = async () => {
-    if (!window.ethereum) return alert("Install MetaMask/Mises!");
+  // 🦊 KONEKSI WALLET DENGAN MODAL
+  const connectToProvider = async (walletName) => {
+    if (!window.ethereum) {
+      alert(`Harap buka di browser Web3 (seperti MetaMask App atau Mises) untuk menggunakan ${walletName}!`);
+      setShowWalletModal(false);
+      return;
+    }
     try {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await web3Provider.send("eth_requestAccounts", []);
       setProvider(web3Provider);
       setSigner(await web3Provider.getSigner());
       setAccount(accounts[0]);
-    } catch (err) { console.error(err); }
+      setShowWalletModal(false);
+    } catch (err) { 
+      console.error(err); 
+      alert("Koneksi ditolak atau terjadi kesalahan.");
+    }
   };
 
   // ⚡ DETEKSI SALDO CEPAT
@@ -105,7 +114,6 @@ export default function App() {
     } catch (err) { console.error("Balance fetch error"); }
   }, [provider, account, tokens]);
 
-  // Polling setiap 4 detik
   useEffect(() => {
     if (provider && account) {
       updateData();
@@ -131,18 +139,14 @@ export default function App() {
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
       
       if (tokens[fromSym].isNative) {
-        // Simulasi Native zkLTC Swap (Kirim transaksi kosong untuk simulasi gas on-chain)
         const tx = await signer.sendTransaction({ to: account, value: 0 });
         await tx.wait();
       } else {
-        // Standar ERC20 Swap
         const tokenContract = new ethers.Contract(tokens[fromSym].address, SimpleERC20_ABI, signer);
         await (await tokenContract.approve(CONTRACTS.pool, parsedIn)).wait();
-        
         const poolContract = new ethers.Contract(CONTRACTS.pool, SimpleLiquidityPool_ABI, signer);
         await (await poolContract.swap(tokens[fromSym].address, parsedIn, { gasLimit: 400000 })).wait();
       }
-      
       alert("Swap Berhasil!");
       setTxCount(prev => prev + 1);
       setAmountIn("");
@@ -151,7 +155,7 @@ export default function App() {
     finally { setLoading(false); }
   };
 
-  // 🚰 FUNGSI MINT LENGKAP
+  // 🚰 FUNGSI MINT
   const handleMint = async (sym) => {
     if (!signer) return alert("Hubungkan dompet!");
     setLoading(true);
@@ -191,7 +195,28 @@ export default function App() {
 
   return (
     <div style={styles.layout}>
-      {/* 1. HEADER DENGAN LOGO X */}
+      
+      {/* 🔮 MODAL CONNECT WALLET */}
+      {showWalletModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowWalletModal(false)}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ margin: 0, color: "#0F172A", fontSize: "18px" }}>Hubungkan Dompet</h3>
+              <button onClick={() => setShowWalletModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748B" }}>✖</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {["MetaMask", "OKX Wallet", "Trust Wallet", "Bitget Wallet"].map(wallet => (
+                <button key={wallet} onClick={() => connectToProvider(wallet)} style={{ padding: "16px", borderRadius: "12px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: "16px", fontWeight: "bold", color: "#0F172A", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {wallet}
+                  <span style={{ fontSize: "20px" }}>🦊</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <FreesiaLogo />
@@ -201,14 +226,15 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <a href="https://x.com" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
-          <button onClick={connectWallet} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
+          {/* Link 𝕏 sudah mengarah ke akun Zack */}
+          <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
+          <button onClick={() => setShowWalletModal(true)} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
             {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
           </button>
         </div>
       </header>
 
-      {/* 2. MENU NAVIGASI (TERMASUK TAB IMPORT) */}
+      {/* 2. MENU NAVIGASI */}
       <div style={styles.navContainer}>
         {["dashboard", "swap", "mint", "pool", "import"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={styles.navTab(activeTab === tab)}>
@@ -218,8 +244,7 @@ export default function App() {
       </div>
 
       <main style={styles.mainContent}>
-        
-        {/* TAB DASHBOARD */}
+        {/* Konten Dashboard Sama Seperti Sebelumnya */}
         {activeTab === "dashboard" && (
           <div>
             <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEADERBOARD</h2>
@@ -252,7 +277,7 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   <input style={styles.input} type="number" placeholder="0.00" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} />
-                  <select value={fromSym} onChange={(e) => setFromSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff" }}>
+                  <select value={fromSym} onChange={(e) => setFromSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff", outline: "none" }}>
                     {Object.keys(tokens).map(sym => <option key={sym} value={sym}>{sym}</option>)}
                   </select>
                 </div>
@@ -269,20 +294,20 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   <input style={styles.input} type="number" placeholder="0.00" value={amountIn ? (amountIn * 0.99).toFixed(4) : ""} readOnly />
-                  <select value={toSym} onChange={(e) => setToSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff" }}>
+                  <select value={toSym} onChange={(e) => setToSym(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontWeight: "bold", background: "#fff", outline: "none" }}>
                     {Object.keys(tokens).map(sym => <option key={sym} value={sym}>{sym}</option>)}
                   </select>
                 </div>
               </div>
 
               <button style={styles.button} onClick={handleSwap} disabled={loading || !amountIn}>
-                {loading ? <><img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="minion" style={{ width: "24px", animation: "spin 2s linear infinite" }} /> Memproses...</> : "Tukar Token"}
+                {loading ? "Memproses..." : "Tukar Token"}
               </button>
             </div>
           </div>
         )}
 
-        {/* TAB MINT FAUCET */}
+        {/* TAB MINT & LAINNYA */}
         {activeTab === "mint" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
@@ -297,12 +322,10 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB POOL (LIKUIDITAS) */}
         {activeTab === "pool" && (
            <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
               <h3 style={{ marginTop: 0 }}>Suntik Likuiditas (Pool)</h3>
-              
               <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
                 <div style={{ flex: 1 }}>
                   <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Token A</span>
@@ -319,47 +342,52 @@ export default function App() {
                   <input type="number" placeholder="Jumlah" value={amountBInput} onChange={(e) => setAmountBInput(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0", marginTop: "10px", boxSizing: "border-box" }} />
                 </div>
               </div>
-
               <button style={styles.button} onClick={handleAddLiquidity} disabled={loading}>
-                {loading ? <><img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="minion" style={{ width: "24px", animation: "spin 2s linear infinite" }} /> Memproses...</> : "Tambah Likuiditas"}
+                {loading ? "Memproses..." : "Tambah Likuiditas"}
               </button>
             </div>
            </div>
         )}
 
-        {/* TAB IMPORT TOKEN BARU */}
         {activeTab === "import" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
               <h3 style={{ marginTop: 0 }}>Import Token Kustom</h3>
               <p style={{ fontSize: "13px", color: "#64748B", marginBottom: "20px" }}>Masukkan smart contract token ERC20 untuk menambahkannya ke dalam DEX.</p>
-              
               <div style={styles.inputBox}>
                 <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Alamat Kontrak (0x...)</span>
                 <input style={{ ...styles.input, fontSize: "16px" }} type="text" placeholder="0x123..." value={customAddress} onChange={(e) => setCustomAddress(e.target.value)} />
               </div>
-              
               <div style={styles.inputBox}>
                 <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>Simbol Token (cth: PEPE)</span>
                 <input style={{ ...styles.input, fontSize: "16px" }} type="text" placeholder="PEPE" value={customSymbol} onChange={(e) => setCustomSymbol(e.target.value.toUpperCase())} />
               </div>
-
               <button style={styles.button} onClick={handleAddToken}>+ Tambahkan Token</button>
             </div>
           </div>
         )}
-
       </main>
 
-      {/* 🍌 MINION FOOTER ELEGAN */}
+      {/* 🍌 MINION FOOTER ELEGAN DENGAN ANIMASI MELOMPAT */}
       <footer style={styles.footer}>
-        <img src="https://cdn-icons-png.flaticon.com/512/5962/5962463.png" alt="Minion Worker" style={{ width: "60px", opacity: 0.9, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))" }} />
-        <p style={{ fontSize: "13px", fontWeight: "bold", color: "#475569", marginTop: "12px", letterSpacing: "0.5px" }}>
+        <img 
+          src="/minion-happy.png" 
+          alt="Minion Worker" 
+          style={{ width: "120px", animation: "bounce 2s infinite ease-in-out", filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.2))" }} 
+        />
+        <p style={{ fontSize: "13px", fontWeight: "bold", color: "#475569", marginTop: "16px", letterSpacing: "0.5px" }}>
           POWERED BY MINION WORKERS & FREESIA NETWORK
         </p>
       </footer>
       
-      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      {/* Animasi Global */}
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes bounce { 
+          0%, 100% { transform: translateY(0); } 
+          50% { transform: translateY(-15px); } 
+        }
+      `}</style>
     </div>
   );
 }
