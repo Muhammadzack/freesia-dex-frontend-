@@ -61,7 +61,8 @@ export default function App() {
     DAI: { address: "0x9013443A3E0Dd775152678a76fceDCBase54e1E1710", isNative: false }
   });
   
-  const [balances, setBalances] = useState({});
+  // Memberikan initial state yang aman agar tidak memicu 'undefined' properti
+  const [balances, setBalances] = useState({ zkLTC: "0.0000", USDC: "0.00", DAI: "0.00" });
   const [fromSym, setFromSym] = useState("USDC");
   const [toSym, setToSym] = useState("DAI");
   const [amountIn, setAmountIn] = useState("");
@@ -75,24 +76,22 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI DOMPET (DIPERBAIKI AGAR TIDAK ERROR)
+  // 🦊 KONEKSI DOMPET STERIL
   const connectPrimaryWallet = async () => {
     if (!window.ethereum) {
-      alert("Browser Web3 (MetaMask/Rabby/Mises) tidak terdeteksi!");
+      alert("Browser Web3 tidak terdeteksi!");
       return;
     }
     try {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      // Langsung request account tanpa auto-switch network terlebih dahulu
       const accounts = await web3Provider.send("eth_requestAccounts", []);
       
       setProvider(web3Provider);
       setSigner(await web3Provider.getSigner());
       setAccount(accounts[0]);
-      setShowWalletModal(false); // Berhasil terhubung, tutup modal!
+      setShowWalletModal(false);
     } catch (err) { 
       console.error("Koneksi gagal:", err); 
-      alert("Gagal menghubungkan. Pastikan Anda mengizinkan koneksi di aplikasi dompet Anda.");
     }
   };
 
@@ -110,7 +109,7 @@ export default function App() {
           newBalances[sym] = parseFloat(ethers.formatUnits(bal, 18)).toFixed(2);
         }
       }
-      setBalances(newBalances);
+      setBalances(prev => ({ ...prev, ...newBalances }));
     } catch (err) { console.error("Balance fetch error"); }
   }, [provider, account, tokens]);
 
@@ -124,8 +123,10 @@ export default function App() {
 
   const handleAddToken = () => {
     if (!customAddress || !customSymbol) return alert("Isi alamat dan simbol token!");
-    setTokens(prev => ({ ...prev, [customSymbol.toUpperCase()]: { address: customAddress, isNative: false } }));
-    alert(`${customSymbol.toUpperCase()} berhasil ditambahkan!`);
+    const symUpper = customSymbol.toUpperCase();
+    setTokens(prev => ({ ...prev, [symUpper]: { address: customAddress, isNative: false } }));
+    setBalances(prev => ({ ...prev, [symUpper]: "0.00" })); // Inject saldo awal aman
+    alert(`${symUpper} berhasil ditambahkan!`);
     setCustomAddress(""); setCustomSymbol("");
     updateData();
   };
@@ -227,7 +228,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 1. HEADER (BULATAN HIJAU DIHAPUS) */}
+      {/* 1. HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <FreesiaLogo />
@@ -254,6 +255,7 @@ export default function App() {
       </div>
 
       <main style={styles.mainContent}>
+        
         {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
@@ -283,6 +285,7 @@ export default function App() {
               <div style={styles.inputBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B", fontSize: "13px" }}>
                   <span>Anda Membayar</span>
+                  {/* Gunakan fallback "0.00" jika properti objek belum terisi */}
                   <span>Saldo: {balances[fromSym] || "0.00"}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -380,7 +383,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 🌸 FOOTER LOGO FREESIA (EFEK PULSE ANIMATION) */}
+      {/* 🌸 FOOTER LOGO FREESIA DENGAN EFEK PULSE */}
       <footer style={styles.footer}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", animation: "pulse 3s infinite ease-in-out" }}>
           <FreesiaLogo />
@@ -390,11 +393,10 @@ export default function App() {
         </p>
       </footer>
       
-      {/* Animasi Global */}
       <style>{`
         @keyframes pulse { 
-          0%, 100% { transform: scale(1); opacity: 0.9; } 
-          50% { transform: scale(1.08); opacity: 1; } 
+          0%, 100% { transform: scale(1); opacity: 0.85; } 
+          50% { transform: scale(1.06); opacity: 1; } 
         }
       `}</style>
     </div>
