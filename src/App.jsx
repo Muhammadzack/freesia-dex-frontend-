@@ -16,9 +16,7 @@ const FreesiaLogo = () => (
   </svg>
 );
 
-const CONTRACTS = {
-  pool: "0xbDA6416a9420fD9fC012A21930c803dA7F3f0f91",
-};
+const CONTRACTS = { pool: "0xbDA6416a9420fD9fC012A21930c803dA7F3f0f91" };
 
 const SimpleERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -43,8 +41,12 @@ const styles = {
   inputBox: { backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", borderRadius: "12px", marginBottom: "16px" },
   input: { width: "100%", border: "none", backgroundColor: "transparent", fontSize: "24px", fontWeight: "bold", color: "#0F172A", outline: "none", marginTop: "8px" },
   footer: { textAlign: "center", padding: "40px 20px", color: "#64748B", marginTop: "auto" },
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "20px" },
-  modalContent: { backgroundColor: "#FFF", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }
+  
+  // Modal Styles (Putih & Kuning Minion)
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "20px" },
+  modalContent: { backgroundColor: "#FFFFFF", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "380px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", border: "1px solid #FDC500" },
+  walletBtnActive: { width: "100%", padding: "16px", borderRadius: "16px", border: "2px solid #FDC500", backgroundColor: "#FFFBEB", fontSize: "16px", fontWeight: "bold", color: "#0F172A", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", transition: "0.2s" },
+  walletBtnDisabled: { width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: "16px", fontWeight: "bold", color: "#94A3B8", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", opacity: 0.8 }
 };
 
 export default function App() {
@@ -54,7 +56,6 @@ export default function App() {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   
-  // Dynamic Token List
   const [tokens, setTokens] = useState({
     zkLTC: { address: "NATIVE", isNative: true },
     USDC: { address: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701", isNative: false },
@@ -75,27 +76,33 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI WALLET DENGAN MODAL
-  const connectToProvider = async (walletName) => {
+  // 🦊 FUNGSI KONEKSI WALLET UTAMA (Hanya MetaMask/Rabby)
+  const connectPrimaryWallet = async () => {
     if (!window.ethereum) {
-      alert(`Harap buka di browser Web3 (seperti MetaMask App atau Mises) untuk menggunakan ${walletName}!`);
-      setShowWalletModal(false);
+      alert("Browser Web3 (MetaMask/Rabby/Mises) tidak terdeteksi!");
       return;
     }
     try {
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // Auto Switch ke LitVM Testnet
+      try {
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x1159' }] });
+      } catch (switchError) {
+        console.log("Jaringan LitVM belum ada atau user menolak switch.");
+      }
+
       const accounts = await web3Provider.send("eth_requestAccounts", []);
       setProvider(web3Provider);
       setSigner(await web3Provider.getSigner());
       setAccount(accounts[0]);
-      setShowWalletModal(false);
+      setShowWalletModal(false); // Tutup modal setelah sukses
     } catch (err) { 
-      console.error(err); 
-      alert("Koneksi ditolak atau terjadi kesalahan.");
+      // Abaikan jika user sekadar menutup popup metamask, jangan kasih alert aneh
+      if(err.code !== 4001) console.error("Koneksi gagal:", err); 
     }
   };
 
-  // ⚡ DETEKSI SALDO CEPAT
   const updateData = useCallback(async () => {
     if (!provider || !account) return;
     try {
@@ -122,7 +129,6 @@ export default function App() {
     }
   }, [provider, account, tokens, updateData]);
 
-  // ➕ TAMBAH TOKEN CUSTOM
   const handleAddToken = () => {
     if (!customAddress || !customSymbol) return alert("Isi alamat dan simbol token!");
     setTokens(prev => ({ ...prev, [customSymbol.toUpperCase()]: { address: customAddress, isNative: false } }));
@@ -131,13 +137,11 @@ export default function App() {
     updateData();
   };
 
-  // 💱 FUNGSI SWAP LENGKAP (NATIVE & ERC20)
   const handleSwap = async () => {
     if (!signer || !amountIn) return alert("Masukkan jumlah!");
     setLoading(true);
     try {
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
-      
       if (tokens[fromSym].isNative) {
         const tx = await signer.sendTransaction({ to: account, value: 0 });
         await tx.wait();
@@ -155,7 +159,6 @@ export default function App() {
     finally { setLoading(false); }
   };
 
-  // 🚰 FUNGSI MINT
   const handleMint = async (sym) => {
     if (!signer) return alert("Hubungkan dompet!");
     setLoading(true);
@@ -169,7 +172,6 @@ export default function App() {
     setLoading(false);
   };
 
-  // 💧 FUNGSI ADD LIQUIDITY
   const handleAddLiquidity = async () => {
     if (!signer || !amountAInput || !amountBInput) return alert("Isi nominal!");
     setLoading(true);
@@ -196,20 +198,38 @@ export default function App() {
   return (
     <div style={styles.layout}>
       
-      {/* 🔮 MODAL CONNECT WALLET */}
+      {/* 🔮 MODAL CONNECT WALLET (WARNA PUTIH & KUNING) */}
       {showWalletModal && (
         <div style={styles.modalOverlay} onClick={() => setShowWalletModal(false)}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 style={{ margin: 0, color: "#0F172A", fontSize: "18px" }}>Hubungkan Dompet</h3>
-              <button onClick={() => setShowWalletModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748B" }}>✖</button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h3 style={{ margin: 0, color: "#0F172A", fontSize: "20px", fontWeight: "900" }}>Pilih Dompet</h3>
+              <button onClick={() => setShowWalletModal(false)} style={{ background: "#F1F5F9", border: "none", width: "32px", height: "32px", borderRadius: "50%", fontWeight: "bold", cursor: "pointer", color: "#64748B" }}>✕</button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {["MetaMask", "OKX Wallet", "Trust Wallet", "Bitget Wallet"].map(wallet => (
-                <button key={wallet} onClick={() => connectToProvider(wallet)} style={{ padding: "16px", borderRadius: "12px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: "16px", fontWeight: "bold", color: "#0F172A", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {wallet}
-                  <span style={{ fontSize: "20px" }}>🦊</span>
-                </button>
+            
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {/* Tombol Utama (Aktif) */}
+              <button onClick={connectPrimaryWallet} style={styles.walletBtnActive}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <span style={{ fontSize: "22px" }}>🦊</span>
+                  <span>MetaMask / Rabby</span>
+                </div>
+                {account ? (
+                  <span style={{ backgroundColor: "#D1FAE5", color: "#059669", padding: "4px 10px", borderRadius: "8px", fontSize: "11px", fontWeight: "900" }}>Terkoneksi 🟢</span>
+                ) : (
+                  <span style={{ color: "#D97706" }}>→</span>
+                )}
+              </button>
+
+              {/* Tombol Lainnya (Coming Soon) */}
+              {["Bitget Wallet", "OKX Wallet", "Trust Wallet"].map(wallet => (
+                <div key={wallet} style={styles.walletBtnDisabled}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ fontSize: "20px", opacity: 0.5 }}>💼</span>
+                    <span>{wallet}</span>
+                  </div>
+                  <span style={{ backgroundColor: "#FEF3C7", color: "#D97706", padding: "4px 8px", borderRadius: "8px", fontSize: "10px", fontWeight: "900", letterSpacing: "0.5px" }}>SEGERA HADIR</span>
+                </div>
               ))}
             </div>
           </div>
@@ -222,11 +242,11 @@ export default function App() {
           <FreesiaLogo />
           <div>
             <h1 style={{ fontSize: "20px", margin: 0, fontWeight: "900", color: "#0F172A" }}>Freesia DEX</h1>
-            <span style={{ fontSize: "11px", color: "#64748B", fontWeight: "bold" }}>LITVM TESTNET</span>
+            {/* Teks Header Diperbarui Menjadi 'LitVM Testnet' */}
+            <span style={{ fontSize: "12px", color: "#64748B", fontWeight: "bold" }}>🟢 LitVM Testnet</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {/* Link 𝕏 sudah mengarah ke akun Zack */}
           <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
           <button onClick={() => setShowWalletModal(true)} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
             {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
@@ -244,7 +264,8 @@ export default function App() {
       </div>
 
       <main style={styles.mainContent}>
-        {/* Konten Dashboard Sama Seperti Sebelumnya */}
+        
+        {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
             <h2 style={{ fontSize: "14px", color: "#64748B", marginTop: 0 }}>AKUN & LEADERBOARD</h2>
@@ -307,7 +328,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB MINT & LAINNYA */}
+        {/* TAB MINT FAUCET */}
         {activeTab === "mint" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
@@ -322,6 +343,7 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB POOL */}
         {activeTab === "pool" && (
            <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
@@ -349,6 +371,7 @@ export default function App() {
            </div>
         )}
 
+        {/* TAB IMPORT TOKEN */}
         {activeTab === "import" && (
           <div style={{ maxWidth: "480px", margin: "0 auto" }}>
             <div style={styles.card}>
@@ -368,15 +391,15 @@ export default function App() {
         )}
       </main>
 
-      {/* 🍌 MINION FOOTER ELEGAN DENGAN ANIMASI MELOMPAT */}
+      {/* 🍌 MINION FOOTER ELEGAN (Bounce Animation) */}
       <footer style={styles.footer}>
         <img 
           src="/minion-happy.png" 
           alt="Minion Worker" 
-          style={{ width: "120px", animation: "bounce 2s infinite ease-in-out", filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.2))" }} 
+          style={{ width: "100px", animation: "bounce 2s infinite ease-in-out", filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.15))" }} 
         />
-        <p style={{ fontSize: "13px", fontWeight: "bold", color: "#475569", marginTop: "16px", letterSpacing: "0.5px" }}>
-          POWERED BY MINION WORKERS & FREESIA NETWORK
+        <p style={{ fontSize: "12px", fontWeight: "bold", color: "#94A3B8", marginTop: "16px", letterSpacing: "1px" }}>
+          POWERED BY MINION WORKERS
         </p>
       </footer>
       
@@ -385,7 +408,7 @@ export default function App() {
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes bounce { 
           0%, 100% { transform: translateY(0); } 
-          50% { transform: translateY(-15px); } 
+          50% { transform: translateY(-12px); } 
         }
       `}</style>
     </div>
