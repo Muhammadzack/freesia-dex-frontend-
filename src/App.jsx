@@ -61,7 +61,6 @@ export default function App() {
     DAI: { address: "0x9013443A3E0Dd775152678a76fceDCBase54e1E1710", isNative: false }
   });
   
-  // Memberikan initial state yang aman agar tidak memicu 'undefined' properti
   const [balances, setBalances] = useState({ zkLTC: "0.0000", USDC: "0.00", DAI: "0.00" });
   const [fromSym, setFromSym] = useState("USDC");
   const [toSym, setToSym] = useState("DAI");
@@ -76,22 +75,29 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  // 🦊 KONEKSI DOMPET STERIL
+  // 🦊 METODE KONEKSI MODERAT & COCOK UNTUK SEMUA BROWSER/EXTENSION
   const connectPrimaryWallet = async () => {
     if (!window.ethereum) {
-      alert("Browser Web3 tidak terdeteksi!");
+      alert("Sila buka laman ini melalui Mises Browser, MetaMask App, atau browser Web3 yang memiliki extension Rabby/MetaMask!");
       return;
     }
     try {
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await web3Provider.send("eth_requestAccounts", []);
+      // Langkah 1: Minta izin akun secara langsung dari inframerah window.ethereum dasar
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       
-      setProvider(web3Provider);
-      setSigner(await web3Provider.getSigner());
-      setAccount(accounts[0]);
-      setShowWalletModal(false);
+      if (accounts && accounts.length > 0) {
+        // Langkah 2: Baru bungkus objek ke dalam Ethers BrowserProvider setelah akun diizinkan
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        const web3Signer = await web3Provider.getSigner();
+        
+        setProvider(web3Provider);
+        setSigner(web3Signer);
+        setAccount(accounts[0]);
+        setShowWalletModal(false);
+      }
     } catch (err) { 
-      console.error("Koneksi gagal:", err); 
+      console.error("Koneksi gagal total:", err);
+      alert("Gagal terhubung. Pastikan popup dompet terbuka dan berikan konfirmasi persetujuan.");
     }
   };
 
@@ -125,7 +131,7 @@ export default function App() {
     if (!customAddress || !customSymbol) return alert("Isi alamat dan simbol token!");
     const symUpper = customSymbol.toUpperCase();
     setTokens(prev => ({ ...prev, [symUpper]: { address: customAddress, isNative: false } }));
-    setBalances(prev => ({ ...prev, [symUpper]: "0.00" })); // Inject saldo awal aman
+    setBalances(prev => ({ ...prev, [symUpper]: "0.00" }));
     alert(`${symUpper} berhasil ditambahkan!`);
     setCustomAddress(""); setCustomSymbol("");
     updateData();
@@ -239,7 +245,7 @@ export default function App() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#0F172A", textDecoration: "none", fontSize: "22px", fontWeight: "bold" }}>𝕏</a>
-          <button onClick={() => setShowWalletModal(true)} style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#0F172A", cursor: "pointer" }}>
+          <button onClick={() => setShowWalletModal(true)} style={{ backgroundColor: "#FDC500", border: "none", padding: "10px 16px", borderRadius: "10px", fontWeight: "bold", color: "#000", cursor: "pointer" }}>
             {account ? `🟢 ${account.substring(0, 6)}...` : "Connect Wallet"}
           </button>
         </div>
@@ -255,7 +261,6 @@ export default function App() {
       </div>
 
       <main style={styles.mainContent}>
-        
         {/* TAB DASHBOARD */}
         {activeTab === "dashboard" && (
           <div>
@@ -285,7 +290,6 @@ export default function App() {
               <div style={styles.inputBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B", fontSize: "13px" }}>
                   <span>Anda Membayar</span>
-                  {/* Gunakan fallback "0.00" jika properti objek belum terisi */}
                   <span>Saldo: {balances[fromSym] || "0.00"}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -383,7 +387,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 🌸 FOOTER LOGO FREESIA DENGAN EFEK PULSE */}
+      {/* 🌸 FOOTER LOGO FREESIA DENGAN EFEK PULSE ANIMATION */}
       <footer style={styles.footer}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", animation: "pulse 3s infinite ease-in-out" }}>
           <FreesiaLogo />
