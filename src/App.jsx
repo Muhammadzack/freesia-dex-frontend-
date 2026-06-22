@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
-import { 
+import {
+  ArrowUpDown, RefreshCw, Droplets, Copy, Check, 
+  Settings, History, BarChart3, Clock, AlertCircle, 
+  LogOut // <-- Untuk tombol disconnect
+} from "lucide-react";
+
 <button 
   disabled
   style={{ 
@@ -16,11 +21,6 @@ import {
 >
   MBG Staking Pool (Soon)
 </button>
-
-  ArrowUpDown, RefreshCw, Droplets, Copy, Check, 
-  Settings, History, BarChart3, Clock, AlertCircle, 
-  LogOut // <-- Untuk tombol disconnect
-} from "lucide-react";
 
 // ==================== ABI & KONFIGURASI ====================
 const ERC20_ABI = [
@@ -38,7 +38,7 @@ const POOL_ABI = [
 
 const CONTRACTS = {
   tokenA: "0x6c18239A767d19dd6d274B94442f09eE6b9b6701",
-  tokenB: "0x9013443A3E0Dd775152678a76fceDcA54e1E1710",
+  tokenB: "0x9013443A3E0D(d775152678a76fceDcA54e1E1710",
   pool: "0xbdA6416a9420fD9fC012A217930c803dA7F3f0f9",
 };
 
