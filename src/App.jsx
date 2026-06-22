@@ -804,5 +804,3 @@ function FreesiaLogo() {
     </svg>
   );
 }
-
-export default App;
