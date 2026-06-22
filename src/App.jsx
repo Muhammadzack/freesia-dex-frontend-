@@ -59,6 +59,9 @@ export default function App() {
   const [amountAInput, setAmountAInput] = useState("");
   const [amountBInput, setAmountBInput] = useState("");
   const [poolLoading, setPoolLoading] = useState(false);
+  
+  // State untuk Simulator IL
+  const [priceChange, setPriceChange] = useState(0); 
 
   const [mintBalances, setMintBalances] = useState({});
   const [mintingSym, setMintingSym] = useState(null);
@@ -389,7 +392,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB POOL */}
+          {/* TAB POOL DENGAN SIMULATOR IL */}
           {activeTab === "pool" && (
              <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "460px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
                <h3 style={{ marginTop: 0, textAlign: "center", color: "#1f2937" }}>Tambah Likuiditas</h3>
@@ -402,13 +405,56 @@ export default function App() {
                   </div>
                </div>
 
-               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
                  <input type="number" placeholder="Jumlah USDC" value={amountAInput} onChange={e => setAmountAInput(e.target.value)} style={{ width: "100%", padding: "16px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111827", borderRadius: "16px", outline: "none", fontWeight: "bold", boxSizing: "border-box" }} />
                  <input type="number" placeholder="Jumlah DAI" value={amountBInput} onChange={e => setAmountBInput(e.target.value)} style={{ width: "100%", padding: "16px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111827", borderRadius: "16px", outline: "none", fontWeight: "bold", boxSizing: "border-box" }} />
                  <button onClick={handleAddLiquidity} disabled={!account || poolLoading} style={{ width: "100%", marginTop: "10px", backgroundColor: account ? "#fbbf24" : "#e5e7eb", color: account ? "#111827" : "#9ca3af", border: "none", padding: "16px", borderRadius: "16px", fontWeight: "bold", cursor: account ? "pointer" : "not-allowed", fontSize: "16px" }}>
                    {poolLoading ? "⏳ Memproses..." : "Tambah Likuiditas"}
                  </button>
                </div>
+
+               {/* ===== SIMULATOR IMPERMANENT LOSS ===== */}
+               <div style={{ padding: "16px", borderRadius: "16px", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                   <h4 style={{ margin: 0, color: "#1f2937", fontSize: "14px" }}>Simulator Risiko (IL)</h4>
+                   <span style={{ fontSize: "12px", color: "#6b7280" }}>Edukasi</span>
+                 </div>
+                 
+                 <div style={{ marginBottom: "16px" }}>
+                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280", marginBottom: "8px" }}>
+                     <span>Perubahan Harga Token</span>
+                     <span style={{ fontWeight: "bold", color: priceChange > 0 ? "#10b981" : priceChange < 0 ? "#ef4444" : "#6b7280" }}>
+                       {priceChange > 0 ? "+" : ""}{priceChange}%
+                     </span>
+                   </div>
+                   <input 
+                     type="range" 
+                     min="-90" 
+                     max="200" 
+                     step="10" 
+                     value={priceChange} 
+                     onChange={(e) => setPriceChange(Number(e.target.value))}
+                     style={{ width: "100%", cursor: "pointer", accentColor: "#fbbf24" }}
+                   />
+                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#9ca3af", marginTop: "4px" }}>
+                     <span>-90% (Dump)</span>
+                     <span>+200% (Pump)</span>
+                   </div>
+                 </div>
+
+                 <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "12px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                   <span style={{ fontSize: "13px", color: "#4b5563" }}>Potensi Nilai Hilang</span>
+                   <span style={{ fontWeight: "bold", color: priceChange === 0 ? "#10b981" : "#ef4444" }}>
+                     {(() => {
+                       if (priceChange === 0) return "0.00%";
+                       const ratio = (100 + priceChange) / 100;
+                       const il = (2 * Math.sqrt(ratio)) / (1 + ratio) - 1;
+                       return (Math.abs(il) * 100).toFixed(2) + "%";
+                     })()}
+                   </span>
+                 </div>
+               </div>
+
              </div>
           )}
 
