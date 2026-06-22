@@ -9,13 +9,18 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "dependencies": {
+    "dependencies": {
+    "@rainbow-me/rainbowkit": "latest",
+    "@tanstack/react-query": "latest",
     "ethers": "^6.12.1",
     "lucide-react": "^1.21.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-hot-toast": "^2.4.1"⁠
+    "react-hot-toast": "^2.4.1",
+    "viem": "latest",
+    "wagmi": "latest"
   },
+  
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
