@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { 
+<button 
+  disabled
+  style={{ 
+    padding: '8px 16px', 
+    borderRadius: '8px', 
+    border: '1px solid #e5e7eb', 
+    backgroundColor: '#f3f4f6', 
+    color: '#9ca3af', 
+    fontWeight: 'bold', 
+    cursor: 'not-allowed',
+    marginLeft: '10px'
+  }}
+>
+  MBG Staking Pool (Soon)
+</button>
+
   ArrowUpDown, RefreshCw, Droplets, Copy, Check, 
   Settings, History, BarChart3, Clock, AlertCircle, 
   LogOut // <-- Untuk tombol disconnect
