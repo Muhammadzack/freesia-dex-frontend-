@@ -30,6 +30,34 @@ const ERC20_ABI = [
   "function mint(address to, uint256 amount) external"
 ];
 
+export default function App() {
+  // 1. STATE UNTUK MENYIMPAN HARGA LTC
+  const [ltcData, setLtcData] = useState({ price: "...", change: "..." });
+
+  // 2. FUNGSI UNTUK MENARIK DATA REAL-TIME COINGECKO
+  useEffect(() => {
+    const fetchLtcPrice = async () => {
+      try {
+        const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd&include_24hr_change=true");
+        const data = await response.json();
+        
+        setLtcData({
+          price: data.litecoin.usd.toFixed(2),
+          change: data.litecoin.usd_24h_change.toFixed(2)
+        });
+      } catch (error) {
+        console.error("Gagal mengambil data harga LTC:", error);
+      }
+    };
+
+    fetchLtcPrice(); // Panggil saat web pertama kali dibuka
+    const interval = setInterval(fetchLtcPrice, 60000); // Perbarui otomatis setiap 1 menit
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // ... (kode lainnya tetap di bawah sini)
+
 const POOL_ABI = [
   "function getReserves() view returns (uint256, uint256)",
   "function swap(address tokenIn, uint256 amountIn) external",
