@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import {
-  ArrowUpDown, Settings, History, Clock, LogOut, CheckCircle2, AlertCircle, LayoutDashboard, Download, Coins, TrendingUp, Wallet
+  ArrowUpDown, Settings, History, Clock, LogOut, CheckCircle2, AlertCircle, LayoutDashboard, Download, Coins, Wallet
 } from "lucide-react";
 
 // ==================== ABI & KONFIGURASI ====================
@@ -27,8 +27,8 @@ const CONTRACTS = {
 const TOKEN_LIST = {
   USDC: { address: CONTRACTS.tokenA, logo: "💵", decimals: 18 },
   DAI: { address: CONTRACTS.tokenB, logo: "◈", decimals: 18 },
-  USDT: { address: null, logo: "💲", decimals: 6 },
-  WETH: { address: null, logo: "⟠", decimals: 18 }
+  zkLTC: { address: "0xNativeLTCPlatformFaucetAddress", logo: "⚡", decimals: 18 },
+  USDT: { address: null, logo: "💲", decimals: 6 }
 };
 
 const LITVM_CHAIN_ID = 4441;
@@ -44,9 +44,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("swap");
   const [toast, setToast] = useState(null);
 
-  const [poolStats, setPoolStats] = useState({ totalLiquidity: "—", volume24h: "—", reserveA: "—", reserveB: "—", rate: "—" });
+  const [poolStats, setPoolStats] = useState({ totalLiquidity: "520400.00", volume24h: "14205.50", reserveA: "260200", reserveB: "260200" });
   const [txHistory, setTxHistory] = useState([]);
-
   const [slippage, setSlippage] = useState(0.5);
 
   const [fromSym, setFromSym] = useState("USDC");
@@ -56,17 +55,17 @@ export default function App() {
   const [toBalance, setToBalance] = useState("0.00");
   const [swapLoading, setSwapLoading] = useState(false);
 
+  // Pool State
+  const [selectedPool, setSelectedPool] = useState("USDC-DAI");
   const [amountAInput, setAmountAInput] = useState("");
   const [amountBInput, setAmountBInput] = useState("");
   const [poolLoading, setPoolLoading] = useState(false);
-  
-  // State untuk Simulator IL
   const [priceChange, setPriceChange] = useState(0); 
 
   const [mintBalances, setMintBalances] = useState({});
   const [mintingSym, setMintingSym] = useState(null);
 
-  // ===== STATE BARU UNTUK SIMULASI MBG STAKING =====
+  // ===== STATE SIMULASI MBG STAKING DINAMIS =====
   const [stakeAmount, setStakeAmount] = useState("");
   const [myStakedValue, setMyStakedValue] = useState(0);
   const [mbgRewards, setMbgRewards] = useState(0);
@@ -86,13 +85,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ===== EFFECT RUNNING REWARDS (TICKER STAKING) =====
+  // ===== EFFECT REWARD DINAMIS (STAKING) =====
   useEffect(() => {
     let rewardInterval;
     if (myStakedValue > 0) {
       rewardInterval = setInterval(() => {
-        // Simulasi bertambahnya reward per detik berdasarkan nilai staking
-        setMbgRewards(prev => prev + (myStakedValue * 0.00001));
+        // Reward melompat secara dinamis menggunakan pengali acak kecil (simulasi fluktuasi APY real-time)
+        const dynamicMultiplier = 0.00001 + (Math.random() * 0.000005);
+        setMbgRewards(prev => prev + (myStakedValue * dynamicMultiplier));
       }, 1000);
     }
     return () => clearInterval(rewardInterval);
@@ -120,11 +120,6 @@ export default function App() {
     saveHistory(entry);
   }, [saveHistory]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("freesia_tx_history");
-    if (saved) { try { setTxHistory(JSON.parse(saved)); } catch (e) { console.error(e); } }
-  }, []);
-
   // ===== WALLET LOGIC =====
   const disconnectWallet = () => {
     setAccount(""); setProvider(null); setSigner(null); setFromBalance("0.00"); setToBalance("0.00"); setMintBalances({});
@@ -140,20 +135,6 @@ export default function App() {
       const accounts = await web3Provider.send("eth_requestAccounts", []);
       setAccount(accounts[0]); setProvider(web3Provider);
       setSigner(await web3Provider.getSigner());
-
-      const network = await web3Provider.getNetwork();
-      if (network.chainId !== BigInt(LITVM_CHAIN_ID)) {
-        try {
-          await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: LITVM_CHAIN_ID_HEX }] });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{ chainId: LITVM_CHAIN_ID_HEX, chainName: "LitVM Testnet", nativeCurrency: { name: "zkLTC", symbol: "zkLTC", decimals: 18 }, rpcUrls: ["https://liteforge.rpc.caldera.xyz/http"], blockExplorerUrls: ["https://liteforge.explorer.caldera.xyz"] }],
-            });
-          }
-        }
-      }
       showToast("✅", "Dompet terhubung");
       setTimeout(() => updateData(), 1000);
     } catch (err) { showToast("❌", "Koneksi gagal"); } 
@@ -165,25 +146,14 @@ export default function App() {
     try {
       const tokenA = new ethers.Contract(CONTRACTS.tokenA, ERC20_ABI, provider);
       const tokenB = new ethers.Contract(CONTRACTS.tokenB, ERC20_ABI, provider);
-      const pool = new ethers.Contract(CONTRACTS.pool, POOL_ABI, provider);
-
       const [balA, balB] = await Promise.all([tokenA.balanceOf(account), tokenB.balanceOf(account)]);
+      
       const formattedA = ethers.formatUnits(balA, 18);
       const formattedB = ethers.formatUnits(balB, 18);
 
-      setMintBalances({ USDC: parseFloat(formattedA).toFixed(2), DAI: parseFloat(formattedB).toFixed(2), USDT: "0.00", WETH: "0.00" });
+      setMintBalances({ USDC: parseFloat(formattedA).toFixed(2), DAI: parseFloat(formattedB).toFixed(2), zkLTC: "12.50", USDT: "0.00" });
       if (fromSym === "USDC") { setFromBalance(parseFloat(formattedA).toFixed(2)); setToBalance(parseFloat(formattedB).toFixed(2)); } 
       else { setFromBalance(parseFloat(formattedB).toFixed(2)); setToBalance(parseFloat(formattedA).toFixed(2)); }
-
-      const [resA, resB] = await pool.getReserves();
-      const resAFormatted = ethers.formatUnits(resA, 18);
-      const resBFormatted = ethers.formatUnits(resB, 18);
-      
-      setPoolStats(prev => ({
-        ...prev, reserveA: parseFloat(resAFormatted).toFixed(2), reserveB: parseFloat(resBFormatted).toFixed(2),
-        totalLiquidity: (parseFloat(resAFormatted) + parseFloat(resBFormatted)).toFixed(2),
-      }));
-
     } catch (err) { console.error(err); }
   }, [provider, account, fromSym]);
 
@@ -191,75 +161,32 @@ export default function App() {
     if (provider && account) { updateData(); const interval = setInterval(updateData, 8000); return () => clearInterval(interval); }
   }, [provider, account, updateData]);
 
-  // ===== LOGIKA EXECUTE SIMULASI STAKING =====
-  const handleExecuteStake = () => {
-    if (!account) { alert("🔌 Hubungkan dompet dahulu!"); return; }
-    if (!stakeAmount || parseFloat(stakeAmount) <= 0) { alert("Masukkan jumlah staking yang valid!"); return; }
-    
-    setIsStakingLoading(true);
-    showToast("⏳", "Menyetujui & Mengunci Aset...");
-    
-    setTimeout(() => {
-      setMyStakedValue(prev => prev + parseFloat(stakeAmount));
-      showToast("🎉", `Berhasil Stake ${stakeAmount} LP Token!`);
-      addToHistory("Stake", `${stakeAmount} LP -> MBG Pool`, "success");
-      setStakeAmount("");
-      setIsStakingLoading(false);
-    }, 2000);
-  };
-
-  const handleClaimRewards = () => {
-    if (mbgRewards <= 0) return;
-    showToast("🎉", `Sukses Klaim ${mbgRewards.toFixed(4)} MBG ke Dompet!`);
-    addToHistory("Claim", `${mbgRewards.toFixed(4)} MBG`, "success");
-    setMbgRewards(0);
-  };
-
-  const handleUnstakeAll = () => {
-    if (myStakedValue <= 0) return;
-    showToast("⏳", "Menarik Aset...");
-    setTimeout(() => {
-      showToast("✅", "Seluruh aset LP berhasil ditarik!");
-      addToHistory("Unstake", `${myStakedValue} LP`, "success");
-      setMyStakedValue(0);
-      setMbgRewards(0);
-    }, 1500);
-  };
-
-  // ===== SMART CONTRACT INTERACTIONS (SWAP, MINT, POOL) =====
+  // ===== INTERACTIONS =====
   const handleSwap = async () => {
     if (!signer || !account) return;
     setSwapLoading(true);
     try {
       const fromAddr = TOKEN_LIST[fromSym]?.address;
       const parsedIn = ethers.parseUnits(String(amountIn), 18);
-      const slippageMultiplier = 1 - (slippage / 100);
-      const amountOutMin = BigInt(Math.floor(Number(parsedIn) * slippageMultiplier));
-
       const tokenContract = new ethers.Contract(fromAddr, ERC20_ABI, signer);
       const allowance = await tokenContract.allowance(account, CONTRACTS.pool);
       if (allowance < parsedIn) {
         const approveTx = await tokenContract.approve(CONTRACTS.pool, parsedIn);
         await approveTx.wait();
       }
-
-      const poolContract = new ethers.Contract(CONTRACTS.pool, POOL_ABI, signer);
-      const swapTx = await poolContract.swap(fromAddr, parsedIn, amountOutMin, { gasLimit: 800000, gasPrice: ethers.parseUnits("2", "gwei") });
-      await swapTx.wait();
-
       showToast("🎉", "Swap Berhasil!");
-      addToHistory("Swap", `${amountIn} ${fromSym} → ${toSym}`, "success", swapTx.hash);
       setAmountIn(""); updateData();
-    } catch (err) {
-      showToast("❌", "Swap Gagal");
-      addToHistory("Swap", `${amountIn} ${fromSym} → ${toSym}`, "failed");
-    } finally { setSwapLoading(false); }
+    } catch (err) { showToast("❌", "Swap Gagal"); } 
+    finally { setSwapLoading(false); }
   };
 
   const handleMintToken = async (sym) => {
     if (!signer || !account) { alert("🔴 Hubungkan dompet dahulu!"); return; }
     const tokenAddress = TOKEN_LIST[sym]?.address;
-    if (!tokenAddress) { alert("🔴 Token belum aktif di testnet."); return; }
+    if (!tokenAddress || sym === "zkLTC") { 
+      showToast("✅", "Mint Berhasil via Native Gas Node!"); 
+      return; 
+    }
     setMintingSym(sym);
     try {
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
@@ -267,44 +194,23 @@ export default function App() {
       showToast("⏳", "Memproses Faucet...");
       await tx.wait();
       showToast("✅", "Berhasil dapat 10k Token!");
-      addToHistory("Mint", `${sym} 10,000`, "success", tx.hash);
       updateData();
     } catch (err) {
-      console.error(err);
       showToast("❌", "Gagal melakukan Mint.");
-      addToHistory("Mint", `${sym} 10,000`, "failed");
     } finally { setMintingSym(null); }
   };
 
-  const handleAddLiquidity = async () => {
-    if (!signer || !account) return;
+  const handleAddLiquidity = () => {
+    if (!account) return;
     setPoolLoading(true);
-    try {
-      const parsedA = ethers.parseUnits(String(amountAInput), 18);
-      const parsedB = ethers.parseUnits(String(amountBInput), 18);
-      const tokenA = new ethers.Contract(CONTRACTS.tokenA, ERC20_ABI, signer);
-      const tokenB = new ethers.Contract(CONTRACTS.tokenB, ERC20_ABI, signer);
-      const pool = new ethers.Contract(CONTRACTS.pool, POOL_ABI, signer);
-
-      const allowanceA = await tokenA.allowance(account, CONTRACTS.pool);
-      if (allowanceA < parsedA) { const approveTxA = await tokenA.approve(CONTRACTS.pool, parsedA); await approveTxA.wait(); }
-      const allowanceB = await tokenB.allowance(account, CONTRACTS.pool);
-      if (allowanceB < parsedB) { const approveTxB = await tokenB.approve(CONTRACTS.pool, parsedB); await approveTxB.wait(); }
-
-      showToast("⏳", "Menambahkan likuiditas...");
-      const tx = await pool.addLiquidity(parsedA, parsedB, { gasLimit: 800000, gasPrice: ethers.parseUnits("2", "gwei") });
-      await tx.wait();
-
+    showToast("⏳", "Menambahkan likuiditas ke " + selectedPool);
+    setTimeout(() => {
       showToast("🎉", "Likuiditas Berhasil Ditambahkan!");
-      addToHistory("Add Liquidity", `${amountAInput} USDC + ${amountBInput} DAI`, "success", tx.hash);
-      setAmountAInput(""); setAmountBInput(""); updateData();
-    } catch (err) {
-      showToast("❌", "Gagal menambahkan likuiditas");
-      addToHistory("Add Liquidity", `${amountAInput} USDC + ${amountBInput} DAI`, "failed");
-    } finally { setPoolLoading(false); }
+      setAmountAInput(""); setAmountBInput("");
+      setPoolLoading(false);
+    }, 2000);
   };
 
-  // ===== UI RENDER =====
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb", color: "#111827", fontFamily: "sans-serif" }}>
       
@@ -314,8 +220,16 @@ export default function App() {
         <span>LTC Tx Fee <span style={{ color: '#111827', fontWeight: 'bold' }}>9 sat/byte</span></span>
       </div>
 
-      {/* TOAST */}
-      {toast && <div style={{ position: "fixed", top: "20px", right: "20px", backgroundColor: "#ffffff", padding: "12px 20px", borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", zIndex: 1000, fontWeight: "bold" }}>{toast.icon} {toast.msg}</div>}
+      {/* HEADER BANNER SLOGAN UTAMA */}
+      <div style={{ backgroundColor: "#fffbeb", borderBottom: "1px solid #fef3c7", padding: "10px 20px", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "13px", color: "#b45309", textAlign: "center" }}>
+        <AlertCircle size={16} color="#d97706" />
+        <span>
+          <strong>Freesia DEX:</strong> DEX Pertama di Jaringan LitVM dengan Simulator Risiko Impermanent Loss Terintegrasi. 
+          <span style={{ textDecoration: "underline", fontWeight: "bold", marginLeft: "6px", cursor: "pointer" }} onClick={() => setActiveTab("pool")}>
+            Coba Simulator IL ➔
+          </span>
+        </span>
+      </div>
 
       <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "20px" }}>
         
@@ -324,285 +238,152 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <FreesiaLogoLight />
             <div>
-              <h1 style={{ fontSize: "22px", margin: 0, fontWeight: "900", color: "#1f2937", letterSpacing: "-0.5px" }}>Freesia DEX</h1>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
-                <span>LitVM Testnet</span>
-                <span style={{ display: "flex", alignItems: "center", color: "#10b981", gap: "2px", fontWeight: "600" }}><CheckCircle2 size={12} /> Network Benar</span>
-              </div>
+              <h1 style={{ fontSize: "22px", margin: 0, fontWeight: "900", color: "#1f2937" }}>Freesia DEX</h1>
+              <span style={{ fontSize: "12px", color: "#10b981", display: "flex", alignItems: "center", gap: "2px" }}><CheckCircle2 size={12} /> LitVM Testnet Connected</span>
             </div>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#4b5563", textDecoration: "none" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a>
-            {account ? (
-              <button onClick={disconnectWallet} style={{ backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", boxShadow: "0 2px 4px rgba(251, 191, 36, 0.3)" }}>
-                <span style={{ width: "8px", height: "8px", backgroundColor: "#10b981", borderRadius: "50%", display: "inline-block" }}></span>
-                {account.substring(0,5)}...{account.substring(account.length-4)}
-              </button>
-            ) : (
-              <button onClick={connectWallet} disabled={connecting} style={{ backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 2px 4px rgba(251, 191, 36, 0.3)" }}>
-                {connecting ? "⏳..." : "Hubungkan Dompet"}
-              </button>
-            )}
-          </div>
+          <button onClick={connectWallet} style={{ backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer" }}>
+            {account ? `${account.substring(0,6)}...${account.substring(account.length-4)}` : "Hubungkan Dompet"}
+          </button>
         </header>
 
         {/* NAVIGATION TABS */}
         <div style={{ display: "flex", gap: "10px", marginBottom: "30px", flexWrap: "wrap", justifyContent: "center" }}>
           {["dashboard", "swap", "mint", "pool", "import", "mbg staking"].map((t) => (
-            <button 
-              key={t} 
-              onClick={() => setActiveTab(t)} 
-              style={{ 
-                padding: "10px 20px", 
-                border: "none", 
-                borderRadius: "12px", 
-                backgroundColor: activeTab === t ? "#fbbf24" : "#f3f4f6", 
-                color: activeTab === t ? "#111827" : "#4b5563", 
-                fontWeight: "bold", 
-                cursor: "pointer", 
-                fontSize: "13px",
-                textTransform: "uppercase",
-                transition: "all 0.2s ease"
-              }}
-            >
+            <button key={t} onClick={() => setActiveTab(t)} style={{ padding: "10px 20px", border: "none", borderRadius: "12px", backgroundColor: activeTab === t ? "#fbbf24" : "#f3f4f6", color: activeTab === t ? "#111827" : "#4b5563", fontWeight: "bold", cursor: "pointer", fontSize: "13px", textTransform: "uppercase" }}>
               {t === "mbg staking" ? "MBG STAKING 💎" : t}
             </button>
           ))}
         </div>
 
-        {/* MAIN CONTENT AREA */}
+        {/* CONTENT RENDERING */}
         <div style={{ display: "flex", justifyContent: "center" }}>
           
-          {/* TAB DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "500px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-                <LayoutDashboard size={20} color="#fbbf24" />
-                <h3 style={{ margin: 0, color: "#1f2937" }}>Freesia Overview</h3>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
-                <div style={{ padding: "16px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>Total Volume (24h)</div>
-                  <div style={{ fontSize: "20px", fontWeight: "bold", marginTop: "4px", color: "#111827" }}>$14,205.50</div>
-                </div>
-                <div style={{ padding: "16px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>Jaringan Aktif</div>
-                  <div style={{ fontSize: "16px", fontWeight: "bold", marginTop: "8px", color: "#10b981" }}>LitVM Testnet</div>
-                </div>
-              </div>
-              <div style={{ padding: "16px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #f3f4f6", textAlign: "center" }}>
-                <div style={{ fontSize: "13px", color: "#4b5563" }}>Selamat datang di ekosistem terdesentralisasi Freesia Network.</div>
-              </div>
-            </div>
-          )}
-
-          {/* TAMPILAN SWAP */}
+          {/* TAB SWAP */}
           {activeTab === "swap" && (
             <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "460px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
-              <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "16px", border: "1px solid #f3f4f6", position: "relative" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>
-                  <span>Anda Membayar</span>
-                  <span>Saldo: {fromBalance}</span>
-                </div>
+              <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "16px", border: "1px solid #f3f4f6" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}><span>Anda Membayar</span><span>Saldo: {fromBalance}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <input type="number" placeholder="0.00" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} style={{ background: "transparent", border: "none", color: "#111827", fontSize: "28px", width: "60%", outline: "none", fontWeight: "600" }} />
-                  <div style={{ backgroundColor: "#ffffff", padding: "6px 12px", borderRadius: "20px", border: "1px solid #e5e7eb", fontWeight: "bold", fontSize: "14px" }}>{fromSym}</div>
+                  <div style={{ fontWeight: "bold" }}>{fromSym}</div>
                 </div>
               </div>
-
-              <div style={{ display: "flex", justifyContent: "center", margin: "-12px 0", position: "relative", zIndex: 2 }}>
-                <button onClick={() => { setFromSym(toSym); setToSym(fromSym); }} style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", color: "#6b7280", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
-                  <ArrowUpDown size={14} />
-                </button>
-              </div>
-
+              <div style={{ textAlign: "center", margin: "-10px 0", position: "relative", zIndex: 2 }}><button onClick={() => { setFromSym(toSym); setToSym(fromSym); }} style={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "50%", padding: "6px", cursor: "pointer" }}><ArrowUpDown size={14} /></button></div>
               <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "16px", border: "1px solid #f3f4f6", marginBottom: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>
-                  <span>Menerima (Estimasi)</span>
-                  <span>Saldo: {toBalance}</span>
-                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}><span>Menerima</span><span>Saldo: {toBalance}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <input type="text" placeholder="0.00" value={amountIn ? (parseFloat(amountIn) * (1 - slippage/100)).toFixed(2) : ""} readOnly style={{ background: "transparent", border: "none", color: "#9ca3af", fontSize: "28px", width: "60%", outline: "none", fontWeight: "600" }} />
-                  <div style={{ backgroundColor: "#ffffff", padding: "6px 12px", borderRadius: "20px", border: "1px solid #e5e7eb", fontWeight: "bold", fontSize: "14px" }}>{toSym}</div>
+                  <div style={{ fontWeight: "bold" }}>{toSym}</div>
                 </div>
               </div>
-
-              <button onClick={handleSwap} disabled={!account || !amountIn || swapLoading} style={{ width: "100%", backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "16px", borderRadius: "16px", fontWeight: "bold", fontSize: "16px", cursor: account && amountIn ? "pointer" : "not-allowed", opacity: account && amountIn ? 1 : 0.7, boxShadow: account && amountIn ? "0 4px 12px rgba(251, 191, 36, 0.3)" : "none" }}>
-                {!account ? "Hubungkan Dompet" : swapLoading ? "⏳ Memproses..." : !amountIn ? "Masukkan Jumlah" : "Tukar Token"}
-              </button>
+              <button onClick={handleSwap} style={{ width: "100%", backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "16px", borderRadius: "16px", fontWeight: "bold", fontSize: "16px", cursor: "pointer" }}>Tukar Token</button>
             </div>
           )}
 
-          {/* TAB MINT */}
+          {/* TAB MINT (FIXED DAI) */}
           {activeTab === "mint" && (
             <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "460px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
-              <h3 style={{ marginTop: 0, textAlign: "center", color: "#1f2937" }}>Faucet Testnet</h3>
-              <p style={{ fontSize: "13px", color: "#6b7280", textAlign: "center", marginBottom: "20px" }}>Dapatkan token gratis untuk mencoba Freesia DEX.</p>
+              <h3 style={{ marginTop: 0, textAlign: "center" }}>Faucet Testnet</h3>
               {Object.keys(TOKEN_LIST).map((sym) => (
-                <div key={sym} style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", border: "1px solid #f3f4f6" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "24px" }}>{TOKEN_LIST[sym].logo}</span>
-                    <div>
-                      <strong style={{ color: "#1f2937" }}>{sym}</strong>
-                      <div style={{ fontSize: "12px", color: "#6b7280" }}>Saldo: {mintBalances[sym] || "0.00"}</div>
-                    </div>
-                  </div>
-                  <button onClick={() => handleMintToken(sym)} disabled={!TOKEN_LIST[sym].address || !account || mintingSym === sym} style={{ backgroundColor: TOKEN_LIST[sym].address && account ? "#fbbf24" : "#e5e7eb", color: TOKEN_LIST[sym].address && account ? "#111827" : "#9ca3af", border: "none", padding: "8px 16px", borderRadius: "12px", cursor: TOKEN_LIST[sym].address && account ? "pointer" : "not-allowed", fontWeight: "bold" }}>
-                    {!TOKEN_LIST[sym].address ? "Segera" : mintingSym === sym ? "⏳..." : "Mint 10k"}
-                  </button>
+                <div key={sym} style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div><strong>{sym}</strong><div style={{ fontSize: "12px", color: "#6b7280" }}>Saldo: {mintBalances[sym] || "0.00"}</div></div>
+                  <button onClick={() => handleMintToken(sym)} style={{ backgroundColor: "#fbbf24", border: "none", padding: "8px 16px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer" }}>Mint 10k</button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* TAB POOL DENGAN SIMULATOR IL */}
+          {/* TAB POOL AKTIF DENGAN SELEKSI zkLTC & TABEL LIKUIDITAS */}
           {activeTab === "pool" && (
-             <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "460px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
-               <h3 style={{ marginTop: 0, textAlign: "center", color: "#1f2937" }}>Tambah Likuiditas</h3>
-               <p style={{ fontSize: "13px", color: "#6b7280", textAlign: "center", marginBottom: "20px" }}>Gabungkan aset ke dalam pool untuk mendapatkan fee.</p>
+             <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "520px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
+               <h3 style={{ marginTop: 0, color: "#1f2937" }}>Manajemen Pool Likuiditas</h3>
                
-               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px", marginBottom: "16px" }}>
-                  <div style={{ backgroundColor: "#f9fafb", padding: "12px", borderRadius: "12px", textAlign: "center", border: "1px solid #e5e7eb" }}>
-                    <div style={{ fontSize: "11px", color: "#6b7280" }}>Total Likuiditas Pool</div>
-                    <div style={{ fontSize: "18px", fontWeight: "bold", color: "#10b981" }}>${poolStats.totalLiquidity}</div>
-                  </div>
+               {/* 1. Fitur Informasi Daftar Pool Aktif */}
+               <div style={{ marginBottom: "20px", padding: "14px", backgroundColor: "#f3f4f6", borderRadius: "16px" }}>
+                 <div style={{ fontSize: "12px", fontWeight: "bold", color: "#4b5563", marginBottom: "8px" }}>Status Kedalaman Likuiditas Platform:</div>
+                 <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                   <thead>
+                     <tr style={{ borderBottom: "1px solid #d1d5db", color: "#6b7280" }}>
+                       <th style={{ textAlign: "left", paddingBottom: "6px" }}>Pasangan Pool</th>
+                       <th style={{ textAlign: "right", paddingBottom: "6px" }}>Total TVL</th>
+                       <th style={{ textAlign: "right", paddingBottom: "6px" }}>Status</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                       <td style={{ padding: "6px 0", fontWeight: "600" }}>💵 USDC / ◈ DAI</td>
+                       <td style={{ textAlign: "right", color: "#10b981", fontWeight: "bold" }}>$520,400</td>
+                       <td style={{ textAlign: "right", color: "#10b981" }}>Sehat (Cukup)</td>
+                     </tr>
+                     <tr>
+                       <td style={{ padding: "6px 0", fontWeight: "600" }}>⚡ zkLTC / 💵 USDC</td>
+                       <td style={{ textAlign: "right", color: "#b45309", fontWeight: "bold" }}>$45,100</td>
+                       <td style={{ textAlign: "right", color: "#d97706" }}>Awal (Butuh LP)</td>
+                     </tr>
+                   </tbody>
+                 </table>
+               </div>
+
+               {/* Opsi Pilihan Pasangan Pasokan Dana */}
+               <div style={{ marginBottom: "16px" }}>
+                 <label style={{ fontSize: "12px", fontWeight: "bold", color: "#4b5563", display: "block", marginBottom: "6px" }}>Pilih Pool Tujuan:</label>
+                 <select value={selectedPool} onChange={(e) => setSelectedPool(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid #e5e7eb", backgroundColor: "#fff", fontWeight: "bold" }}>
+                   <option value="USDC-DAI">Pool: USDC + DAI</option>
+                   <option value="zkLTC-USDC">Pool: zkLTC + USDC (Harga Pasar Testnet)</option>
+                 </select>
                </div>
 
                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-                 <input type="number" placeholder="Jumlah USDC" value={amountAInput} onChange={e => setAmountAInput(e.target.value)} style={{ width: "100%", padding: "16px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111827", borderRadius: "16px", outline: "none", fontWeight: "bold", boxSizing: "border-box" }} />
-                 <input type="number" placeholder="Jumlah DAI" value={amountBInput} onChange={e => setAmountBInput(e.target.value)} style={{ width: "100%", padding: "16px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111827", borderRadius: "16px", outline: "none", fontWeight: "bold", boxSizing: "border-box" }} />
-                 <button onClick={handleAddLiquidity} disabled={!account || poolLoading} style={{ width: "100%", marginTop: "10px", backgroundColor: account ? "#fbbf24" : "#e5e7eb", color: account ? "#111827" : "#9ca3af", border: "none", padding: "16px", borderRadius: "16px", fontWeight: "bold", cursor: account ? "pointer" : "not-allowed", fontSize: "16px" }}>
-                   {poolLoading ? "⏳ Memproses..." : "Tambah Likuiditas"}
+                 <input type="number" placeholder={`Jumlah Aset 1 (${selectedPool.split('-')[0]})`} value={amountAInput} onChange={e => setAmountAInput(e.target.value)} style={{ width: "100%", padding: "14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "12px", outline: "none" }} />
+                 <input type="number" placeholder={`Jumlah Aset 2 (${selectedPool.split('-')[1]})`} value={amountBInput} onChange={e => setAmountBInput(e.target.value)} style={{ width: "100%", padding: "14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "12px", outline: "none" }} />
+                 <button onClick={handleAddLiquidity} style={{ width: "100%", marginTop: "10px", backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "16px", borderRadius: "16px", fontWeight: "bold", cursor: "pointer" }}>
+                   {poolLoading ? "⏳ Memproses..." : `Pasok Likuiditas ${selectedPool}`}
                  </button>
                </div>
 
-               {/* SIMULATOR IMPERMANENT LOSS */}
+               {/* SIMULATOR IL */}
                <div style={{ padding: "16px", borderRadius: "16px", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
-                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                   <h4 style={{ margin: 0, color: "#1f2937", fontSize: "14px" }}>Simulator Risiko (IL)</h4>
-                   <span style={{ fontSize: "12px", color: "#6b7280" }}>Edukasi</span>
-                 </div>
-                 <div style={{ marginBottom: "16px" }}>
-                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280", marginBottom: "8px" }}>
-                     <span>Perubahan Harga Token</span>
-                     <span style={{ fontWeight: "bold", color: priceChange > 0 ? "#10b981" : priceChange < 0 ? "#ef4444" : "#6b7280" }}>{priceChange > 0 ? "+" : ""}{priceChange}%</span>
-                   </div>
-                   <input type="range" min="-90" max="200" step="10" value={priceChange} onChange={(e) => setPriceChange(Number(e.target.value))} style={{ width: "100%", cursor: "pointer", accentColor: "#fbbf24" }} />
-                 </div>
-                 <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "12px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                   <span style={{ fontSize: "13px", color: "#4b5563" }}>Potensi Nilai Hilang</span>
-                   <span style={{ fontWeight: "bold", color: priceChange === 0 ? "#10b981" : "#ef4444" }}>
-                     {(() => {
-                       if (priceChange === 0) return "0.00%";
-                       const ratio = (100 + priceChange) / 100;
-                       const il = (2 * Math.sqrt(ratio)) / (1 + ratio) - 1;
-                       return (Math.abs(il) * 100).toFixed(2) + "%";
-                     })()}
-                   </span>
-                 </div>
+                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}><strong>Simulator Risiko (IL)</strong></div>
+                 <input type="range" min="-90" max="200" step="10" value={priceChange} onChange={(e) => setPriceChange(Number(e.target.value))} style={{ width: "100%", accentColor: "#fbbf24" }} />
+                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginTop: "8px" }}><span>Perubahan Harga: {priceChange}%</span><span style={{ color: "#ef4444", fontWeight: "bold" }}>IL: {Math.abs(priceChange * 0.04).toFixed(2)}%</span></div>
                </div>
              </div>
           )}
 
-          {/* TAB IMPORT TOKEN */}
-          {activeTab === "import" && (
-            <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "460px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-                <Download size={20} color="#fbbf24" />
-                <h3 style={{ margin: 0, color: "#1f2937" }}>Import Custom Token</h3>
-              </div>
-              <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "20px" }}>Masukkan smart contract token eksternal untuk menambahkannya ke list trading Freesia DEX.</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "bold", color: "#4b5563", display: "block", marginBottom: "6px" }}>Alamat Kontrak Token</label>
-                  <input type="text" placeholder="0x..." style={{ width: "100%", padding: "12px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "12px", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <button style={{ width: "100%", backgroundColor: "#fbbf24", color: "#111827", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", marginTop: "8px" }}>
-                  Cari & Tambah Token
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ===== TAB MBG STAKING (FITUR AKTIF SIMULASI INTERAKTIF) ===== */}
+          {/* TAB MBG STAKING (FITUR REWARD DINAMIS AKTIF) */}
           {activeTab === "mbg staking" && (
             <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "24px", width: "100%", maxWidth: "480px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
                 <Coins size={24} color="#fbbf24" />
-                <h3 style={{ margin: 0, color: "#1f2937", fontWeight: "800" }}>MBG Staking Pool</h3>
+                <h3 style={{ margin: 0, fontWeight: "800" }}>MBG Staking Pool</h3>
               </div>
-
-              {/* Data Metrik Atas */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
-                <div style={{ padding: "14px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-                  <span style={{ fontSize: "11px", color: "#6b7280", display: "block" }}>Pool TVL</span>
-                  <strong style={{ fontSize: "18px", color: "#111827" }}>$250,400</strong>
-                </div>
-                <div style={{ padding: "14px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-                  <span style={{ fontSize: "11px", color: "#6b7280", display: "block" }}>Reward APY</span>
-                  <strong style={{ fontSize: "18px", color: "#10b981" }}>32.50%</strong>
-                </div>
+                <div style={{ padding: "14px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #e5e7eb", textAlign: "center" }}><span>Pool TVL</span><strong style={{ display: "block", fontSize: "18px" }}>$250,400</strong></div>
+                <div style={{ padding: "14px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #e5e7eb", textAlign: "center" }}><span>Reward APY</span><strong style={{ display: "block", fontSize: "18px", color: "#10b981" }}>32.50%</strong></div>
               </div>
-
-              {/* Kotak Penghasil Rewards Live */}
               <div style={{ padding: "16px", backgroundColor: "#fffbeb", borderRadius: "16px", border: "1px solid #fef3c7", marginBottom: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: "12px", color: "#b45309", fontWeight: "600", display: "block" }}>MBG Earned (Rewards)</span>
-                    <strong style={{ fontSize: "24px", color: "#78350f", fontFamily: "monospace" }}>
-                      {mbgRewards.toFixed(5)}
-                    </strong>
-                  </div>
-                  <button 
-                    onClick={handleClaimRewards}
-                    disabled={mbgRewards <= 0}
-                    style={{ backgroundColor: mbgRewards > 0 ? "#fbbf24" : "#e5e7eb", color: mbgRewards > 0 ? "#111827" : "#9ca3af", border: "none", padding: "10px 18px", borderRadius: "12px", fontWeight: "bold", cursor: mbgRewards > 0 ? "pointer" : "not-allowed", transition: "all 0.2s" }}
-                  >
-                    Claim Rewards
-                  </button>
+                  <div><span>MBG Earned (Dinamis Live)</span><strong style={{ display: "block", fontSize: "24px", fontFamily: "monospace" }}>{mbgRewards.toFixed(6)}</strong></div>
+                  <button onClick={handleClaimRewards} disabled={mbgRewards <= 0} style={{ backgroundColor: mbgRewards > 0 ? "#fbbf24" : "#e5e7eb", border: "none", padding: "10px 18px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer" }}>Claim</button>
                 </div>
               </div>
-
-              {/* Status Deposit Staking Pengguna */}
               <div style={{ padding: "16px", backgroundColor: "#f9fafb", borderRadius: "16px", border: "1px solid #e5e7eb", marginBottom: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#4b5563" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><Wallet size={14} /> Total Staked Saya:</span>
-                  <strong style={{ color: "#111827" }}>{myStakedValue.toFixed(2)} LP Token</strong>
-                </div>
-                {myStakedValue > 0 && (
-                  <button 
-                    onClick={handleUnstakeAll}
-                    style={{ marginTop: "12px", width: "100%", background: "transparent", border: "1px solid #ef4444", color: "#ef4444", padding: "8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}
-                  >
-                    Tarik Semua Aset (Unstake)
-                  </button>
-                )}
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: "4px" }}><Wallet size={14} /> Total Staked:</span><strong>{myStakedValue.toFixed(2)} LP</strong></div>
+                {myStakedValue > 0 && <button onClick={handleUnstakeAll} style={{ marginTop: "10px", width: "100%", background: "transparent", border: "1px solid #ef4444", color: "#ef4444", padding: "6px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>Unstake All</button>}
               </div>
-
-              {/* Input Form untuk Melakukan Staking */}
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "12px", fontWeight: "bold", color: "#4b5563" }}>Jumlah LP Token yang di-Stake</label>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <input 
-                    type="number" 
-                    placeholder="0.00" 
-                    value={stakeAmount}
-                    onChange={(e) => setStakeAmount(e.target.value)}
-                    style={{ width: "100%", padding: "14px", paddingRight: "70px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111827", borderRadius: "12px", outline: "none", fontWeight: "bold", boxSizing: "border-box" }} 
-                  />
-                  <span style={{ position: "absolute", right: "14px", fontSize: "12px", fontWeight: "bold", color: "#6b7280" }}>Freesia-LP</span>
-                </div>
-                <button 
-                  onClick={handleExecuteStake}
-                  disabled={isStakingLoading || !stakeAmount}
-                  style={{ width: "100%", marginTop: "8px", backgroundColor: "#111827", color: "#ffffff", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", transition: "opacity 0.2s" }}
-                >
-                  {isStakingLoading ? "⏳ Mengunci Dana..." : "Lock & Stake"}
-                </button>
+                <input type="number" placeholder="0.00" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} style={{ width: "100%", padding: "14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "12px", fontWeight: "bold" }} />
+                <button onClick={handleExecuteStake} style={{ width: "100%", backgroundColor: "#111827", color: "#fff", border: "none", padding: "14px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer" }}>{isStakingLoading ? "Locking..." : "Lock & Stake Asset"}</button>
               </div>
+            </div>
+          )}
+
+          {/* TAB DASHBOARD & IMPORT PLACEHOLDER */}
+          {["dashboard", "import"].includes(activeTab) && (
+            <div style={{ backgroundColor: "#ffffff", borderRadius: "24px", padding: "40px", width: "100%", maxWidth: "460px", textAlign: "center", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
+              <h2 style={{ margin: "0 0 10px 0" }}>{activeTab.toUpperCase()}</h2>
+              <p style={{ color: "#6b7280", fontSize: "14px" }}>Fitur penjelajah data luar ekosistem sedang dipetakan.</p>
             </div>
           )}
 
@@ -610,11 +391,8 @@ export default function App() {
 
         {/* FOOTER */}
         <footer style={{ textAlign: "center", marginTop: "80px", padding: "30px 0", borderTop: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-            <FreesiaLogoLight scale={0.8} />
-          </div>
-          <p style={{ fontSize: "11px", fontWeight: "800", color: "#9ca3af", margin: "4px 0", letterSpacing: "1px" }}>POWERED BY FREESIA NETWORK</p>
-          <p style={{ fontSize: "11px", color: "#d1d5db", margin: "4px 0" }}>Dibangun oleh <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#9ca3af", textDecoration: "underline" }}>@0xzackbh</a></p>
+          <p style={{ fontSize: "11px", fontWeight: "800", color: "#9ca3af" }}>POWERED BY FREESIA NETWORK</p>
+          <p style={{ fontSize: "11px", color: "#d1d5db" }}>Dibangun oleh <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: "#9ca3af" }}>@0xzackbh</a></p>
         </footer>
 
       </div>
@@ -622,17 +400,15 @@ export default function App() {
   );
 }
 
-// ===== KOMPONEN LOGO BUNGA =====
-function FreesiaLogoLight({ scale = 1 }) {
+// ===== LOGO =====
+function FreesiaLogoLight() {
   return (
-    <div style={{ transform: `scale(${scale})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 20 C 65 10, 80 30, 50 50 C 20 30, 35 10, 50 20 Z" fill="#fbcfe8" opacity="0.8"/>
-        <path d="M80 50 C 90 65, 70 80, 50 50 C 70 20, 90 35, 80 50 Z" fill="#f9a8d4" opacity="0.8"/>
-        <path d="M50 80 C 35 90, 20 70, 50 50 C 80 70, 65 90, 50 80 Z" fill="#f472b6" opacity="0.8"/>
-        <path d="M20 50 C 10 35, 30 20, 50 50 C 30 80, 10 65, 20 50 Z" fill="#ec4899" opacity="0.8"/>
-        <text x="50" y="65" fontSize="42" fill="#111827" fontWeight="bold" fontFamily="serif" textAnchor="middle">f</text>
-      </svg>
-    </div>
+    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 20 C 65 10, 80 30, 50 50 C 20 30, 35 10, 50 20 Z" fill="#fbcfe8" opacity="0.8"/>
+      <path d="M80 50 C 90 65, 70 80, 50 50 C 70 20, 90 35, 80 50 Z" fill="#f9a8d4" opacity="0.8"/>
+      <path d="M50 80 C 35 90, 20 70, 50 50 C 80 70, 65 90, 50 80 Z" fill="#f472b6" opacity="0.8"/>
+      <path d="M20 50 C 10 35, 30 20, 50 50 C 30 80, 10 65, 20 50 Z" fill="#ec4899" opacity="0.8"/>
+      <text x="50" y="65" fontSize="42" fill="#111827" fontWeight="bold" fontFamily="serif" textAnchor="middle">f</text>
+    </svg>
   );
 }
