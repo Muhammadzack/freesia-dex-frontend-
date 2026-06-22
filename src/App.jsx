@@ -6,22 +6,6 @@ import {
   LogOut // <-- Untuk tombol disconnect
 } from "lucide-react";
 
-<button 
-  disabled
-  style={{ 
-    padding: '8px 16px', 
-    borderRadius: '8px', 
-    border: '1px solid #e5e7eb', 
-    backgroundColor: '#f3f4f6', 
-    color: '#9ca3af', 
-    fontWeight: 'bold', 
-    cursor: 'not-allowed',
-    marginLeft: '10px'
-  }}
->
-  MBG Staking Pool (Soon)
-</button>
-
 // ==================== ABI & KONFIGURASI ====================
 const ERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
