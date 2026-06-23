@@ -194,7 +194,10 @@ export default function App() {
   const [myStakedValue, setMyStakedValue] = useState(0);
   const [mbgRewards, setMbgRewards] = useState(0);
 
-  const [txHistory, setTxHistory] = useState([]);
+  const [txHistory, setTxHistory] = useState(() => {
+    const saved = localStorage.getItem("freesia_tx_history");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [toast, setToast] = useState(null);
   const [swapCount, setSwapCount] = useState(0);
   const [totalVolume, setTotalVolume] = useState(0);
@@ -234,7 +237,7 @@ export default function App() {
   useEffect(() => {
     const fetchLtc = async () => {
       try {
-        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd&include_24hr_change=true");
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd&include_24hr_change=true", { mode: "no-cors" });
         const data = await res.json();
         setLtcData({ price: data.litecoin.usd.toFixed(2), change: data.litecoin.usd_24h_change.toFixed(2) });
       } catch {
@@ -331,7 +334,7 @@ export default function App() {
   const refreshBalances = async (ctr, addr, prov) => {
     try {
       const prov = new ethers.BrowserProvider(window.ethereum);
-      if (!providerToUse || !addr) return;
+      if (!window.ethereum || !addr) return;
       const balances = {};
       for (const [sym, info] of Object.entries(TOKEN_LIST)) {
         if (sym === "zkLTC") {
