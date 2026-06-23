@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+
+# Create ONE complete App.jsx file - everything in one file
+# LandingPage + DEX + Dashboard + Staking + TradingView + Updated Logo
+
+complete_app = r'''import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
   ArrowUpDown, Settings, CheckCircle2, AlertCircle, X,
-  Coins, Wallet, Moon, Sun, Share2, Bell, BookMarked,
-  Trash2, Copy, Zap, TrendingUp, ChevronDown, ExternalLink,
-  Info, Clock, BarChart3, Shield, Github, Twitter, MessageCircle,
-  FileText, Globe, HelpCircle, Search, Sliders, RefreshCw,
-  ArrowRight, Layers, Percent, Activity, DollarSign, CandlestickChart,
-  LayoutDashboard, Trophy, Flame, PiggyBank, MinusCircle, PlusCircle,
-  Award, Star, TrendingUpIcon, User, LogOut
+  Coins, Wallet, Moon, Sun, Share2, Zap, TrendingUp,
+  ChevronDown, ExternalLink, Info, Clock, BarChart3, Shield,
+  Github, Twitter, MessageCircle, FileText, Globe, HelpCircle,
+  Search, Sliders, RefreshCw, ArrowRight, Layers, Percent,
+  Activity, DollarSign, CandlestickChart, LayoutDashboard,
+  Trophy, Award, Plus, Minus, Home, Menu
 } from "lucide-react";
 
-// ==================== ABI & KONFIGURASI ====================
+// ==================== CONFIG ====================
 const ERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -34,9 +37,9 @@ const CONTRACTS = {
   pool: "0xbdA6416a9420fD9fC012A217930c803dA7F3f0f9",
 };
 const TOKEN_LIST = {
-  USDC: { address: CONTRACTS.tokenA, logo: "💵", decimals: 18, symbol: "USDC", name: "USD Coin", color: "#2775ca" },
-  DAI: { address: CONTRACTS.tokenB, logo: "◈", decimals: 18, symbol: "DAI", name: "Dai Stablecoin", color: "#f5ac37" },
-  zkLTC: { address: "NATIVE", logo: "⚡", decimals: 18, symbol: "zkLTC", name: "zkLitecoin", color: "#bfbbbb" }
+  USDC: { address: CONTRACTS.tokenA, logo: "💵", decimals: 18, symbol: "USDC", name: "USD Coin" },
+  DAI: { address: CONTRACTS.tokenB, logo: "◈", decimals: 18, symbol: "DAI", name: "Dai Stablecoin" },
+  zkLTC: { address: "NATIVE", logo: "⚡", decimals: 18, symbol: "zkLTC", name: "zkLitecoin" }
 };
 const LITVM_CHAIN_ID_HEX = "0x1159";
 const LITVM_CHAIN_ID_DEC = 4441n;
@@ -48,8 +51,25 @@ const LITVM_PARAMS = {
 };
 const shortAddr = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : "";
 
-// ==================== TRADINGVIEW WIDGET ====================
-function TradingViewWidget({ symbol = "LTCUSD", darkMode = true }) {
+// ==================== FREESIA LOGO (Updated) ====================
+function FreesiaLogo({ size = 32 }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(0 50 50)"/>
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(60 50 50)"/>
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(120 50 50)"/>
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(180 50 50)"/>
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(240 50 50)"/>
+        <ellipse cx="50" cy="28" rx="12" ry="18" fill="#f9a8d4" opacity="0.9" transform="rotate(300 50 50)"/>
+        <text x="50" y="68" fontSize="52" fill="#1e293b" fontWeight="bold" fontFamily="serif" fontStyle="italic" textAnchor="middle">f</text>
+      </svg>
+    </div>
+  );
+}
+
+// ==================== TRADINGVIEW ====================
+function TradingViewWidget({ symbol, darkMode }) {
   const containerRef = useRef(null);
   useEffect(() => {
     if (!containerRef.current) return;
@@ -78,9 +98,235 @@ function TradingViewWidget({ symbol = "LTCUSD", darkMode = true }) {
   );
 }
 
-// ==================== DASHBOARD COMPONENT ====================
-function UserDashboard({ account, mintBalances, txHistory, myStakedValue, mbgRewards, darkMode, T }) {
-  const [activeUsers, setActiveUsers] = useState(3420);
+// ==================== LANDING PAGE ====================
+function LandingPage({ onLaunchApp }) {
+  const [darkMode, setDarkMode] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [animatedStats, setAnimatedStats] = useState({ tvl: 0, volume: 0, users: 0, tx: 0 });
+
+  const T = {
+    bg: darkMode ? "#0a0e1a" : "#f8fafc",
+    text: darkMode ? "#f8fafc" : "#0f172a",
+    sub: darkMode ? "#94a3b8" : "#64748b",
+    accent: "#f59e0b",
+    card: darkMode ? "rgba(30, 41, 59, 0.6)" : "rgba(255, 255, 255, 0.8)",
+    border: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+    green: "#10b981", purple: "#8b5cf6", blue: "#3b82f6",
+  };
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check(); window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    const targets = { tvl: 565000, volume: 1280000, users: 3420, tx: 15600 };
+    const duration = 2000, steps = 60, interval = duration / steps;
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      const progress = step / steps;
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setAnimatedStats({
+        tvl: Math.floor(targets.tvl * easeOut),
+        volume: Math.floor(targets.volume * easeOut),
+        users: Math.floor(targets.users * easeOut),
+        tx: Math.floor(targets.tx * easeOut),
+      });
+      if (step >= steps) clearInterval(timer);
+    }, interval);
+    return () => clearInterval(timer);
+  }, []);
+
+  const features = [
+    { icon: Zap, title: "Lightning Swaps", desc: "Tukar token USDC/DAI/zkLTC dengan kecepatan tinggi di jaringan LitVM Testnet.", color: T.accent },
+    { icon: Layers, title: "Liquidity Pools", desc: "Suntikkan likuiditas, dapatkan LP token, dan terima fee dari setiap swap.", color: T.green },
+    { icon: BarChart3, title: "IL Simulator", desc: "Simulator risiko impermanent loss pertama yang terintegrasi langsung di DEX.", color: T.purple },
+    { icon: Coins, title: "MBG Staking", desc: "Stake LP token dan dapatkan reward MBG dengan APR hingga 32.5%.", color: T.blue },
+    { icon: Shield, title: "Secure & Transparent", desc: "Semua transaksi tercatat di blockchain LitVM yang bisa diverifikasi.", color: "#ef4444" },
+    { icon: TrendingUp, title: "Real-time Charts", desc: "Integrasi TradingView untuk analisis harga LTC, BTC, dan ETH real-time.", color: "#06b6d4" },
+  ];
+
+  const steps = [
+    { num: "01", title: "Connect Wallet", desc: "Hubungkan MetaMask ke jaringan LitVM Testnet secara otomatis." },
+    { num: "02", title: "Get Test Tokens", desc: "Gunakan faucet untuk mendapatkan USDC, DAI, dan zkLTC gratis." },
+    { num: "03", title: "Start Trading", desc: "Swap, pool, atau stake langsung dari dashboard." },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: T.bg, color: T.text, fontFamily: "'Inter', sans-serif", overflowX: "hidden" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .glass-card { background:${T.card}; backdrop-filter:blur(20px); border:1px solid ${T.border}; border-radius:24px; }
+        .btn-primary { background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; border:none; padding:16px 32px; border-radius:16px; font-weight:700; font-size:15px; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 14px rgba(245,158,11,0.3); display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(245,158,11,0.4); }
+        .btn-secondary { background:transparent; color:${T.text}; border:1px solid ${T.border}; padding:14px 28px; border-radius:16px; font-weight:600; font-size:15px; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+        .btn-secondary:hover { border-color:#f59e0b; background:${darkMode?"rgba(245,158,11,0.05)":"rgba(245,158,11,0.03)"}; }
+        .feature-card { background:${darkMode?"rgba(30,41,59,0.4)":"rgba(255,255,255,0.6)"}; border:1px solid ${T.border}; border-radius:20px; padding:32px; transition:all 0.3s; }
+        .feature-card:hover { transform:translateY(-4px); border-color:${darkMode?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.1)"}; box-shadow:0 20px 40px rgba(0,0,0,0.1); }
+        .footer-link { color:${T.sub}; text-decoration:none; font-size:13px; transition:color 0.2s; }
+        .footer-link:hover { color:#f59e0b; }
+      `}</style>
+
+      <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, padding:"16px 24px", background:scrolled?(darkMode?"rgba(10,14,26,0.9)":"rgba(248,250,252,0.9)"):"transparent", backdropFilter:scrolled?"blur(20px)":"none", transition:"all 0.3s", borderBottom:scrolled?`1px solid ${T.border}`:"none" }}>
+        <div style={{ maxWidth:"1200px", margin:"0 auto", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+            <FreesiaLogo size={28} />
+            <span style={{ fontWeight:"800", fontSize:"18px", color:T.text }}>Freesia DEX</span>
+          </div>
+          {!isMobile && (
+            <div style={{ display:"flex", alignItems:"center", gap:"32px" }}>
+              <a href="#features" style={{ color:T.sub, textDecoration:"none", fontSize:"14px", fontWeight:"500" }}>Features</a>
+              <a href="#how-it-works" style={{ color:T.sub, textDecoration:"none", fontSize:"14px", fontWeight:"500" }}>How It Works</a>
+              <a href="#stats" style={{ color:T.sub, textDecoration:"none", fontSize:"14px", fontWeight:"500" }}>Stats</a>
+              <button onClick={() => setDarkMode(!darkMode)} style={{ background:"none", border:"none", cursor:"pointer", color:T.sub }}>{darkMode?"☀️":"🌙"}</button>
+              <button onClick={onLaunchApp} className="btn-primary" style={{ padding:"10px 24px", fontSize:"14px" }}>Launch App <ArrowRight size={16} /></button>
+            </div>
+          )}
+          {isMobile && (
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ background:"none", border:"none", cursor:"pointer", color:T.text }}>{showMobileMenu ? <X size={24} /> : <Menu size={24} />}</button>
+          )}
+        </div>
+        {isMobile && showMobileMenu && (
+          <div style={{ position:"absolute", top:"60px", left:"20px", right:"20px", background:T.card, border:`1px solid ${T.border}`, borderRadius:"16px", padding:"20px", display:"flex", flexDirection:"column", gap:"12px", boxShadow:"0 20px 40px rgba(0,0,0,0.2)", animation:"slideUp 0.2s ease" }}>
+            <a href="#features" onClick={()=>setShowMobileMenu(false)} style={{ color:T.text, textDecoration:"none", fontSize:"16px", fontWeight:"600", padding:"8px 0" }}>Features</a>
+            <a href="#how-it-works" onClick={()=>setShowMobileMenu(false)} style={{ color:T.text, textDecoration:"none", fontSize:"16px", fontWeight:"600", padding:"8px 0" }}>How It Works</a>
+            <button onClick={()=>{onLaunchApp();setShowMobileMenu(false)}} className="btn-primary" style={{ width:"100%", justifyContent:"center", marginTop:"8px" }}>Launch App <ArrowRight size={16} /></button>
+          </div>
+        )}
+      </nav>
+
+      <section style={{ padding:"140px 24px 100px", position:"relative", overflow:"hidden", background:darkMode?"radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.15) 0%, transparent 50%), #0a0e1a":"radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.08) 0%, transparent 50%), #f8fafc" }}>
+        <div style={{ position:"absolute", top:"10%", right:"10%", width:"400px", height:"400px", borderRadius:"50%", background:"radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%)", filter:"blur(60px)", animation:"float 6s ease-in-out infinite" }} />
+        <div style={{ maxWidth:"1000px", margin:"0 auto", textAlign:"center", position:"relative", zIndex:1 }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:"8px", padding:"8px 16px", borderRadius:"20px", background:darkMode?"rgba(245,158,11,0.1)":"rgba(245,158,11,0.08)", border:`1px solid ${darkMode?"rgba(245,158,11,0.2)":"rgba(245,158,11,0.15)"}`, marginBottom:"32px" }}>
+            <span style={{ width:"8px", height:"8px", borderRadius:"50%", background:T.green }} />
+            <span style={{ fontSize:"13px", fontWeight:"600", color:darkMode?"#fbbf24":"#b45309" }}>Live on LitVM Testnet</span>
+          </div>
+          <h1 style={{ fontSize:isMobile?"36px":"56px", fontWeight:"900", lineHeight:"1.1", margin:"0 0 20px", letterSpacing:"-1.5px", background:"linear-gradient(135deg, #f8fafc 0%, #fbbf24 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+            The First DEX on<br />LitVM Network
+          </h1>
+          <p style={{ fontSize:isMobile?"16px":"20px", color:T.sub, maxWidth:"600px", margin:"0 auto 40px", lineHeight:"1.6" }}>
+            Swap, pool, and stake with the only DEX featuring an integrated Impermanent Loss Risk Simulator.
+          </p>
+          <div style={{ display:"flex", gap:"16px", justifyContent:"center", flexWrap:"wrap" }}>
+            <button onClick={onLaunchApp} className="btn-primary" style={{ fontSize:"16px", padding:"18px 36px" }}>Launch App <ArrowRight size={18} /></button>
+            <a href="https://liteforge.explorer.caldera.xyz" target="_blank" rel="noreferrer" className="btn-secondary">View Explorer <ExternalLink size={16} /></a>
+          </div>
+        </div>
+      </section>
+
+      <section id="stats" style={{ padding:"60px 24px", background:darkMode?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)" }}>
+        <div style={{ maxWidth:"1200px", margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr", gap:"16px" }}>
+            <div className="glass-card" style={{ padding:"24px", textAlign:"center" }}>
+              <div style={{ fontSize:"28px", fontWeight:"800", color:T.accent, fontFamily:"monospace" }}>${animatedStats.tvl.toLocaleString()}</div>
+              <div style={{ fontSize:"13px", color:T.sub, marginTop:"4px" }}>Total Value Locked</div>
+            </div>
+            <div className="glass-card" style={{ padding:"24px", textAlign:"center" }}>
+              <div style={{ fontSize:"28px", fontWeight:"800", color:T.green, fontFamily:"monospace" }}>${animatedStats.volume.toLocaleString()}</div>
+              <div style={{ fontSize:"13px", color:T.sub, marginTop:"4px" }}>Total Volume</div>
+            </div>
+            <div className="glass-card" style={{ padding:"24px", textAlign:"center" }}>
+              <div style={{ fontSize:"28px", fontWeight:"800", color:T.purple, fontFamily:"monospace" }}>{animatedStats.users.toLocaleString()}</div>
+              <div style={{ fontSize:"13px", color:T.sub, marginTop:"4px" }}>Active Users</div>
+            </div>
+            <div className="glass-card" style={{ padding:"24px", textAlign:"center" }}>
+              <div style={{ fontSize:"28px", fontWeight:"800", color:T.blue, fontFamily:"monospace" }}>{animatedStats.tx.toLocaleString()}</div>
+              <div style={{ fontSize:"13px", color:T.sub, marginTop:"4px" }}>Transactions</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" style={{ padding:"100px 24px" }}>
+        <div style={{ maxWidth:"1200px", margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:"60px" }}>
+            <span style={{ fontSize:"13px", fontWeight:"700", color:T.accent, textTransform:"uppercase", letterSpacing:"2px" }}>Features</span>
+            <h2 style={{ fontSize:isMobile?"28px":"40px", fontWeight:"800", margin:"12px 0 16px" }}>Everything You Need</h2>
+            <p style={{ fontSize:"16px", color:T.sub, maxWidth:"500px", margin:"0 auto", lineHeight:"1.6" }}>Freesia DEX menyediakan semua tools untuk trading DeFi di jaringan LitVM.</p>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:"20px" }}>
+            {features.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div key={i} className="feature-card" style={{ opacity:0, animation:`slideUp 0.5s ease ${i*0.1}s forwards` }}>
+                  <div style={{ width:"48px", height:"48px", borderRadius:"14px", background:`${f.color}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"20px" }}>
+                    <Icon size={24} color={f.color} />
+                  </div>
+                  <h3 style={{ fontSize:"18px", fontWeight:"700", margin:"0 0 10px", color:T.text }}>{f.title}</h3>
+                  <p style={{ fontSize:"14px", color:T.sub, lineHeight:"1.6", margin:0 }}>{f.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" style={{ padding:"100px 24px", background:darkMode?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)" }}>
+        <div style={{ maxWidth:"1000px", margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:"60px" }}>
+            <span style={{ fontSize:"13px", fontWeight:"700", color:T.accent, textTransform:"uppercase", letterSpacing:"2px" }}>Getting Started</span>
+            <h2 style={{ fontSize:isMobile?"28px":"40px", fontWeight:"800", margin:"12px 0 16px" }}>How It Works</h2>
+          </div>
+          <div style={{ display:"flex", flexDirection:isMobile?"column":"row", gap:"24px" }}>
+            {steps.map((step, i) => (
+              <div key={i} className="glass-card" style={{ flex:1, padding:"32px", position:"relative", opacity:0, animation:`slideUp 0.5s ease ${i*0.15}s forwards` }}>
+                <div style={{ fontSize:"40px", fontWeight:"900", color:darkMode?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)", position:"absolute", top:"20px", right:"24px" }}>{step.num}</div>
+                <div style={{ width:"48px", height:"48px", borderRadius:"14px", background:"rgba(245,158,11,0.1)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"20px" }}>
+                  {i===0?<Wallet size={24} color={T.accent}/>:i===1?<Zap size={24} color={T.accent}/>:<ArrowRight size={24} color={T.accent}/>}
+                </div>
+                <h3 style={{ fontSize:"20px", fontWeight:"700", margin:"0 0 10px", color:T.text }}>{step.title}</h3>
+                <p style={{ fontSize:"14px", color:T.sub, lineHeight:"1.6", margin:0 }}>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ padding:"100px 24px", position:"relative" }}>
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(139,92,246,0.05) 100%)" }} />
+        <div className="glass-card" style={{ maxWidth:"800px", margin:"0 auto", padding:isMobile?"40px 24px":"60px", textAlign:"center", position:"relative", zIndex:1 }}>
+          <h2 style={{ fontSize:isMobile?"24px":"36px", fontWeight:"800", margin:"0 0 16px" }}>Ready to Start Trading?</h2>
+          <p style={{ fontSize:"16px", color:T.sub, maxWidth:"500px", margin:"0 auto 32px", lineHeight:"1.6" }}>Bergabung dengan ribuan user yang sudah trading di Freesia DEX.</p>
+          <button onClick={onLaunchApp} className="btn-primary" style={{ fontSize:"16px", padding:"18px 40px" }}>Launch App Now <ArrowRight size={18} /></button>
+        </div>
+      </section>
+
+      <footer style={{ padding:"60px 24px 30px", borderTop:`1px solid ${T.border}` }}>
+        <div style={{ maxWidth:"1200px", margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"2fr 1fr 1fr 1fr", gap:"40px", marginBottom:"40px" }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"16px" }}><FreesiaLogo size={28} /><span style={{ fontWeight:"800", fontSize:"18px", color:T.text }}>Freesia DEX</span></div>
+              <p style={{ fontSize:"13px", color:T.sub, lineHeight:"1.7", margin:0 }}>DEX terintegrasi pertama di jaringan LitVM Testnet. Built by @0xzackbh.</p>
+            </div>
+            <div><h4 style={{ fontSize:"14px", fontWeight:"700", color:T.text, marginBottom:"16px" }}>Products</h4><div style={{ display:"flex", flexDirection:"column", gap:"10px" }}><span className="footer-link" style={{ cursor:"pointer" }} onClick={onLaunchApp}>Swap</span><span className="footer-link" style={{ cursor:"pointer" }} onClick={onLaunchApp}>Pool</span><span className="footer-link" style={{ cursor:"pointer" }} onClick={onLaunchApp}>Staking</span><span className="footer-link" style={{ cursor:"pointer" }} onClick={onLaunchApp}>Dashboard</span></div></div>
+            <div><h4 style={{ fontSize:"14px", fontWeight:"700", color:T.text, marginBottom:"16px" }}>Developers</h4><div style={{ display:"flex", flexDirection:"column", gap:"10px" }}><a href="https://liteforge.explorer.caldera.xyz" target="_blank" rel="noreferrer" className="footer-link">Explorer</a><span className="footer-link">Documentation</span></div></div>
+            <div><h4 style={{ fontSize:"14px", fontWeight:"700", color:T.text, marginBottom:"16px" }}>Support</h4><div style={{ display:"flex", flexDirection:"column", gap:"10px" }}><span className="footer-link">Community</span><span className="footer-link">Terms</span><span className="footer-link">Privacy</span></div></div>
+          </div>
+          <div style={{ textAlign:"center", paddingTop:"24px", borderTop:`1px solid ${T.border}` }}>
+            <p style={{ fontSize:"12px", color:T.sub, margin:0 }}>© 2026 Freesia DEX. Built by <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color:T.accent, textDecoration:"none", fontWeight:"600" }}>@0xzackbh</a> on LitVM Testnet.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// ==================== USER DASHBOARD ====================
+function UserDashboard({ mintBalances, txHistory, myStakedValue, mbgRewards, darkMode, T }) {
   const totalVolume = txHistory.reduce((acc, tx) => {
     if (tx.type === "Swap") { const amt = parseFloat(tx.detail?.split(" ")?.[0]) || 0; return acc + amt; }
     return acc;
@@ -93,7 +339,7 @@ function UserDashboard({ account, mintBalances, txHistory, myStakedValue, mbgRew
   const badges = [
     { name: "First Swap", icon: Zap, unlocked: swapCount >= 1, color: "#f59e0b" },
     { name: "Trader Pro", icon: TrendingUp, unlocked: swapCount >= 5, color: "#3b82f6" },
-    { name: "Liquidity Provider", icon: Droplets, unlocked: poolCount >= 1, color: "#10b981" },
+    { name: "Liquidity Provider", icon: Layers, unlocked: poolCount >= 1, color: "#10b981" },
     { name: "Token Miner", icon: Coins, unlocked: mintCount >= 3, color: "#8b5cf6" },
     { name: "Staking King", icon: Trophy, unlocked: myStakedValue > 0, color: "#ef4444" },
     { name: "Diamond Hands", icon: Award, unlocked: totalTx >= 10, color: "#06b6d4" },
@@ -132,13 +378,10 @@ function UserDashboard({ account, mintBalances, txHistory, myStakedValue, mbgRew
         {badges.map((badge, i) => {
           const Icon = badge.icon;
           return (
-            <div key={i} style={{ 
-              padding: "14px", borderRadius: "14px", textAlign: "center", border: `1px solid ${badge.unlocked ? badge.color + "40" : T.border}`,
-              background: badge.unlocked ? badge.color + "10" : T.input, opacity: badge.unlocked ? 1 : 0.5 
-            }}>
+            <div key={i} style={{ padding: "14px", borderRadius: "14px", textAlign: "center", border: `1px solid ${badge.unlocked ? badge.color + "40" : T.border}`, background: badge.unlocked ? badge.color + "10" : T.input, opacity: badge.unlocked ? 1 : 0.5 }}>
               <Icon size={20} color={badge.unlocked ? badge.color : T.sub} style={{ marginBottom: "6px" }} />
               <div style={{ fontSize: "11px", fontWeight: "700", color: badge.unlocked ? badge.color : T.sub }}>{badge.name}</div>
-              {badge.unlocked && <div style={{ fontSize: "10px", color: T.green, marginTop: "2px" }}>✓ Unlocked</div>}
+              {badge.unlocked && <div style={{ fontSize: "10px", color: T.green, marginTop: "2px" }}>Unlocked</div>}
             </div>
           );
         })}
@@ -171,7 +414,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("swap");
   const [toast, setToast] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") { const s = localStorage.getItem("freesia_darkmode"); return s ? s === "true" : true; }
     return true;
@@ -243,7 +485,6 @@ export default function App() {
 
   useEffect(() => { if (myStakedValue <= 0) return; const iv = setInterval(() => setMbgRewards(p => p + myStakedValue * (0.00001 + Math.random() * 0.000005)), 1000); return () => clearInterval(iv); }, [myStakedValue]);
 
-  // Fee accumulation simulation
   useEffect(() => {
     if (userLPBalance <= 0) return;
     const iv = setInterval(() => setFeeEarned(p => p + userLPBalance * 0.0001), 5000);
@@ -257,7 +498,6 @@ export default function App() {
       const [bA, bB] = await Promise.all([tA.balanceOf(account).catch(()=>0n), tB.balanceOf(account).catch(()=>0n)]);
       const fb = { USDC: parseFloat(ethers.formatUnits(bA,18)).toFixed(2), DAI: parseFloat(ethers.formatUnits(bB,18)).toFixed(2), zkLTC: parseFloat(ethers.formatEther(nb)).toFixed(4) };
       setMintBalances(fb); setFromBalance(fb[fromSym]||"0.00"); setToBalance(fb[toSym]||"0.00");
-      // Get LP balance
       const poolContract = new ethers.Contract(CONTRACTS.pool, POOL_ABI, w3);
       const lpBal = await poolContract.balanceOf(account).catch(()=>0n);
       const lpSupply = await poolContract.totalSupply().catch(()=>0n);
@@ -344,6 +584,7 @@ export default function App() {
   const swapTokens = () => { setFromSym(toSym); setToSym(fromSym); setAmountIn(""); setAmountOutPreview(""); };
   const selectToken = (sym, type) => { if (type === 'from') { if (sym === toSym) setToSym(fromSym); setFromSym(sym); } else { if (sym === fromSym) setFromSym(toSym); setToSym(sym); } setShowTokenSelector(null); setAmountIn(""); setAmountOutPreview(""); };
   const tabs = [{ id: "swap", label: "Swap", icon: ArrowUpDown }, { id: "mint", label: "Faucet", icon: Zap }, { id: "pool", label: "Pool", icon: Layers }, { id: "staking", label: "Staking", icon: Coins }, { id: "dashboard", label: "Dashboard", icon: LayoutDashboard }, { id: "history", label: "History", icon: Clock }];
+
   if (showLanding) return <LandingPage onLaunchApp={() => setShowLanding(false)} />;
 
   return (
@@ -378,8 +619,6 @@ export default function App() {
         .stat-card { background: ${T.input}; border: 1px solid ${T.border}; border-radius: 16px; padding: 16px; transition: all 0.2s; }
         .stat-card:hover { border-color: ${T.borderHover}; }
         .chart-container { border-radius: 20px; overflow: hidden; border: 1px solid ${T.border}; background: ${darkMode ? "#0a0e1a" : "#ffffff"}; }
-        .progress-bar { height: 6px; border-radius: 3px; background: ${darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f59e0b, #d97706); transition: width 0.5s ease; }
       `}</style>
 
       {/* REMOVE LP MODAL */}
@@ -387,7 +626,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowRemoveLPModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "400px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}><MinusCircle size={20} color={T.red} /> Remove Liquidity</h3>
+              <h3 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}><Minus size={20} color={T.red} /> Remove Liquidity</h3>
               <button onClick={() => setShowRemoveLPModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: T.sub }}><X size={20} /></button>
             </div>
             <p style={{ fontSize: "13px", color: T.sub, marginBottom: "16px" }}>Your LP Balance: <strong style={{ color: T.text }}>{userLPBalance.toFixed(4)}</strong> LP</p>
@@ -489,7 +728,7 @@ export default function App() {
 
       {/* BANNER */}
       <div style={{ background: darkMode ? "rgba(245,158,11,0.08)" : "#fffbeb", borderBottom: `1px solid ${darkMode ? "rgba(245,158,11,0.15)" : "#fef3c7"}`, padding: "12px 20px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: "4px", fontSize: "13px", color: darkMode ? "#fbbf24" : "#b45309", textAlign: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600" }}><AlertCircle size={14} /> "The First DEX on LitVM Network with Integrated Impermanent Loss Risk Simulator."</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600" }}><AlertCircle size={14} /> The First DEX on LitVM Network with Integrated Impermanent Loss Risk Simulator.</div>
         <span style={{ fontSize: "11px", opacity: 0.8, fontStyle: "italic" }}>DEX Pertama di Jaringan LitVM dengan Simulator Risiko Impermanent Loss Terintegrasi</span>
       </div>
 
@@ -506,7 +745,7 @@ export default function App() {
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button onClick={() => setShowChart(!showChart)} className="btn-secondary" style={{ color: showChart ? T.accent : T.sub }}><CandlestickChart size={15} /></button>
             <button onClick={() => setDarkMode(d => !d)} className="btn-secondary">{darkMode ? <Sun size={15} /> : <Moon size={15} />}</button>
-            <button onClick={() => setShowLanding(true)} className="btn-secondary" style={{ fontSize: "12px" }}>🏠</button>
+            <button onClick={() => setShowLanding(true)} className="btn-secondary" style={{ fontSize: "12px" }}><Home size={15} /></button>
             <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: T.text, textDecoration: "none", fontSize: "18px", fontWeight: "bold", opacity: 0.7 }}>𝕏</a>
             <button onClick={connectWallet} disabled={connecting} className="btn-primary" style={{ padding: "10px 20px", fontSize: "13px" }}>
               {connecting ? "Menghubungkan..." : account ? <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Wallet size={14} /> {shortAddr(account)}</span> : "Hubungkan Dompet"}
@@ -595,21 +834,20 @@ export default function App() {
                 <div className="stat-card"><div style={{ fontSize: "12px", color: T.sub, marginBottom: "4px" }}>USDC / DAI TVL</div><div style={{ fontSize: "20px", fontWeight: "800", color: T.green }}>${communityLiquidity.usdcDaiTVL.toLocaleString()}</div></div>
                 <div className="stat-card"><div style={{ fontSize: "12px", color: T.sub, marginBottom: "4px" }}>zkLTC / USDC TVL</div><div style={{ fontSize: "20px", fontWeight: "800", color: T.green }}>${communityLiquidity.zkLtcUsdcTVL.toLocaleString()}</div></div>
               </div>
-              {/* YOUR LP POSITION */}
               {account && userLPBalance > 0 && (
                 <div style={{ padding: "20px", borderRadius: "16px", border: `1px solid ${T.border}`, background: T.input, marginBottom: "20px" }}>
-                  <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}><Droplets size={16} color={T.blue} /> Your LP Position</h4>
+                  <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}><Layers size={16} color={T.blue} /> Your LP Position</h4>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}><span style={{ fontSize: "13px", color: T.sub }}>LP Balance</span><span style={{ fontWeight: "700" }}>{userLPBalance.toFixed(4)} LP</span></div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}><span style={{ fontSize: "13px", color: T.sub }}>Pool Share</span><span style={{ fontWeight: "700" }}>{totalLPSupply > 0 ? ((userLPBalance / totalLPSupply) * 100).toFixed(4) : "0"}%</span></div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}><span style={{ fontSize: "13px", color: T.sub }}>Fee Earned</span><span style={{ fontWeight: "700", color: T.green }}>${feeEarned.toFixed(4)}</span></div>
-                  <button onClick={() => setShowRemoveLPModal(true)} className="btn-secondary" style={{ width: "100%", justifyContent: "center", color: T.red, borderColor: T.red }}><MinusCircle size={14} /> Remove Liquidity</button>
+                  <button onClick={() => setShowRemoveLPModal(true)} className="btn-secondary" style={{ width: "100%", justifyContent: "center", color: T.red, borderColor: T.red }}><Minus size={14} /> Remove Liquidity</button>
                 </div>
               )}
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "600", color: T.sub, display: "block", marginBottom: "8px" }}>Pilih Pool</label>
                 <select value={selectedPool} onChange={e => setSelectedPool(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: "12px", border: `1px solid ${T.border}`, background: T.input, color: T.text, fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
-                  <option value="USDC-DAI">💵 USDC + ◈ DAI Pool</option>
-                  <option value="zkLTC-USDC">⚡ zkLTC + 💵 USDC Pool</option>
+                  <option value="USDC-DAI">USDC + DAI Pool</option>
+                  <option value="zkLTC-USDC">zkLTC + USDC Pool</option>
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
@@ -668,7 +906,7 @@ export default function App() {
           )}
 
           {/* DASHBOARD */}
-          {activeTab === "dashboard" && <UserDashboard account={account} mintBalances={mintBalances} txHistory={txHistory} myStakedValue={myStakedValue} mbgRewards={mbgRewards} darkMode={darkMode} T={T} />}
+          {activeTab === "dashboard" && <UserDashboard mintBalances={mintBalances} txHistory={txHistory} myStakedValue={myStakedValue} mbgRewards={mbgRewards} darkMode={darkMode} T={T} />}
 
           {/* HISTORY */}
           {activeTab === "history" && (
@@ -683,7 +921,7 @@ export default function App() {
                     <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: "12px", background: T.input, border: `1px solid ${T.border}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: tx.type === "Swap" ? T.accentGlow : tx.type === "Mint" ? T.greenBg : tx.type === "Add Liquidity" ? T.input : T.redBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {tx.type === "Swap" ? <ArrowUpDown size={16} color={T.accent} /> : tx.type === "Mint" ? <Zap size={16} color={T.green} /> : tx.type === "Add Liquidity" ? <PlusCircle size={16} color={T.blue} /> : <MinusCircle size={16} color={T.red} />}
+                          {tx.type === "Swap" ? <ArrowUpDown size={16} color={T.accent} /> : tx.type === "Mint" ? <Zap size={16} color={T.green} /> : tx.type === "Add Liquidity" ? <Plus size={16} color={T.blue} /> : <Minus size={16} color={T.red} />}
                         </div>
                         <div><span style={{ fontWeight: "700", fontSize: "14px" }}>{tx.type}</span><div style={{ fontSize: "12px", color: T.sub, marginTop: "2px" }}>{tx.detail}</div></div>
                       </div>
@@ -721,17 +959,11 @@ export default function App() {
     </div>
   );
 }
+'''
 
-function FreesiaLogo({ size = 32 }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 20 C 65 10, 80 30, 50 50 C 20 30, 35 10, 50 20 Z" fill="#fbcfe8" opacity="0.8"/>
-        <path d="M80 50 C 90 65, 70 80, 50 50 C 70 20, 90 35, 80 50 Z" fill="#f9a8d4" opacity="0.8"/>
-        <path d="M50 80 C 35 90, 20 70, 50 50 C 80 70, 65 90, 50 80 Z" fill="#f472b6" opacity="0.8"/>
-        <path d="M20 50 C 10 35, 30 20, 50 50 C 30 80, 10 65, 20 50 Z" fill="#ec4899" opacity="0.8"/>
-        <text x="50" y="65" fontSize="42" fill="#111827" fontWeight="bold" fontFamily="serif" textAnchor="middle">f</text>
-      </svg>
-    </div>
-  );
-}
+with open('/mnt/agents/output/App_Complete.jsx', 'w', encoding='utf-8') as f:
+    f.write(complete_app)
+
+print("COMPLETE App.jsx saved!")
+print(f"Size: {len(complete_app)} characters")
+print(f"Lines: {complete_app.count(chr(10))}")
