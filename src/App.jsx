@@ -259,7 +259,7 @@ export default function App() {
   const connectWallet = async () => {
     if (!window.ethereum) { showToast("Install MetaMask!", "⚠️"); return; }
     try {
-      const prov = new ethers.providers.Web3Provider(window.ethereum, "any");
+      const prov = new ethers.BrowserProvider(window.ethereum, "any");
       await prov.send("eth_requestAccounts", []);
       const sig = prov.getSigner();
       const addr = await sig.getAddress();
@@ -304,20 +304,20 @@ export default function App() {
       for (const [sym, info] of Object.entries(TOKEN_LIST)) {
         if (sym === "zkLTC") {
           const bal = await provider.getBalance(addr);
-          balances[sym] = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+          balances[sym] = parseFloat(ethers.formatEther(bal)).toFixed(4);
         } else {
           const tokenContract = new ethers.Contract(info.address, ["function balanceOf(address) view returns (uint256)"], provider);
           const bal = await tokenContract.balanceOf(addr);
-          balances[sym] = parseFloat(ethers.utils.formatUnits(bal, info.decimals)).toFixed(4);
+          balances[sym] = parseFloat(ethers.formatUnits(bal, info.decimals)).toFixed(4);
         }
       }
       setMintBalances(balances);
       const lpBal = await ctr.getUserLPBalance(addr);
-      setUserLPBalance(parseFloat(ethers.utils.formatEther(lpBal)));
+      setUserLPBalance(parseFloat(ethers.formatEther(lpBal)));
       const poolInfo = await ctr.getPoolInfo();
-      setPoolReserves({ reserveA: parseFloat(ethers.utils.formatEther(poolInfo.reserveA)), reserveB: parseFloat(ethers.utils.formatEther(poolInfo.reserveB)) });
-      setTotalLPSupply(parseFloat(ethers.utils.formatEther(poolInfo.totalLP)));
-      setFeeEarned(parseFloat(ethers.utils.formatEther(poolInfo.feeEarned)));
+      setPoolReserves({ reserveA: parseFloat(ethers.formatEther(poolInfo.reserveA)), reserveB: parseFloat(ethers.formatEther(poolInfo.reserveB)) });
+      setTotalLPSupply(parseFloat(ethers.formatEther(poolInfo.totalLP)));
+      setFeeEarned(parseFloat(ethers.formatEther(poolInfo.feeEarned)));
     } catch (e) {
       console.error("Refresh balances error:", e);
     }
@@ -328,9 +328,9 @@ export default function App() {
     try {
       const fromInfo = TOKEN_LIST[fromToken];
       const toInfo = TOKEN_LIST[toToken];
-      const amountInWei = ethers.utils.parseUnits(amountIn, fromInfo.decimals);
+      const amountInWei = ethers.parseUnits(amountIn, fromInfo.decimals);
       const amountOutWei = await contract.getAmountOut(fromInfo.address, toInfo.address, amountInWei);
-      const out = parseFloat(ethers.utils.formatUnits(amountOutWei, toInfo.decimals));
+      const out = parseFloat(ethers.formatUnits(amountOutWei, toInfo.decimals));
       setAmountOut(out.toFixed(4));
       const reserveA = poolReserves.reserveA || 1;
       const reserveB = poolReserves.reserveB || 1;
@@ -353,8 +353,8 @@ export default function App() {
     try {
       const fromInfo = TOKEN_LIST[fromToken];
       const toInfo = TOKEN_LIST[toToken];
-      const amountInWei = ethers.utils.parseUnits(amountIn, fromInfo.decimals);
-      const minOut = ethers.utils.parseUnits((parseFloat(amountOut) * (1 - slippage / 100)).toFixed(6), toInfo.decimals);
+      const amountInWei = ethers.parseUnits(amountIn, fromInfo.decimals);
+      const minOut = ethers.parseUnits((parseFloat(amountOut) * (1 - slippage / 100)).toFixed(6), toInfo.decimals);
       const tx = await contract.swap(fromInfo.address, toInfo.address, amountInWei, minOut);
       showToast("Swap submitted...", "⏳");
       await tx.wait();
@@ -378,7 +378,7 @@ export default function App() {
     try {
       const info = TOKEN_LIST[sym];
       const amount = sym === "USDC" ? "10000" : "1000";
-      const amountWei = ethers.utils.parseUnits(amount, info.decimals);
+      const amountWei = ethers.parseUnits(amount, info.decimals);
       const tx = await contract.mint(info.address, amountWei);
       showToast(`Minting ${amount} ${sym}...`, "⏳");
       await tx.wait();
@@ -398,8 +398,8 @@ export default function App() {
       const [symA, symB] = selectedPool.split("-");
       const infoA = TOKEN_LIST[symA];
       const infoB = TOKEN_LIST[symB];
-      const amountAWei = ethers.utils.parseUnits(amountAInput, infoA.decimals);
-      const amountBWei = ethers.utils.parseUnits(amountBInput, infoB.decimals);
+      const amountAWei = ethers.parseUnits(amountAInput, infoA.decimals);
+      const amountBWei = ethers.parseUnits(amountBInput, infoB.decimals);
       const tx = await contract.addLiquidity(infoA.address, infoB.address, amountAWei, amountBWei);
       showToast("Adding liquidity...", "⏳");
       await tx.wait();
@@ -418,7 +418,7 @@ export default function App() {
     if (!contract || !account) { showToast("Connect wallet first!", "⚠️"); return; }
     if (!removeLPAmount || parseFloat(removeLPAmount) <= 0) { showToast("Enter LP amount!", "⚠️"); return; }
     try {
-      const lpWei = ethers.utils.parseEther(removeLPAmount);
+      const lpWei = ethers.parseEther(removeLPAmount);
       const tx = await contract.removeLiquidity(lpWei);
       showToast("Removing liquidity...", "⏳");
       await tx.wait();
@@ -437,7 +437,7 @@ export default function App() {
     if (!contract || !account) { showToast("Connect wallet first!", "⚠️"); return; }
     if (!stakeAmount || parseFloat(stakeAmount) <= 0) { showToast("Enter stake amount!", "⚠️"); return; }
     try {
-      const stakeWei = ethers.utils.parseEther(stakeAmount);
+      const stakeWei = ethers.parseEther(stakeAmount);
       const tx = await contract.stakeLP(stakeWei);
       showToast("Staking LP...", "⏳");
       await tx.wait();
@@ -454,7 +454,7 @@ export default function App() {
   const handleUnstake = async () => {
     if (!contract || !account) { showToast("Connect wallet first!", "⚠️"); return; }
     try {
-      const tx = await contract.unstakeLP(ethers.utils.parseEther(myStakedValue.toString()));
+      const tx = await contract.unstakeLP(ethers.parseEther(myStakedValue.toString()));
       showToast("Unstaking...", "⏳");
       await tx.wait();
       setTxHistory(prev => [{ type: "Unstake", detail: `${myStakedValue.toFixed(4)} LP`, time: new Date().toLocaleTimeString() }, ...prev]);
