@@ -282,7 +282,7 @@ export default function App() {
       setProvider(prov);
       setSigner(sig);
       setAccount(addr);
-      setOnCorrectNetwork(net.chainId === CHAIN_ID);
+      setOnCorrectNetwork(Number(net.chainId) === CHAIN_ID);
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, sig);
       setContract(ctr);
       showToast("Wallet connected!", "✅");
@@ -504,7 +504,16 @@ export default function App() {
     setShowShareModal(false);
   };
 
-  const fromBalance = mintBalances[fromToken] || "0.00";
+  const disconnectWallet = () => {
+    setAccount(null);
+    setProvider(null);
+    setSigner(null);
+    setContract(null);
+    setOnCorrectNetwork(true);
+    showToast("Wallet disconnected", "👋");
+  };
+
+const fromBalance = mintBalances[fromToken] || "0.00";
   const toBalance = mintBalances[toToken] || "0.00";
 
   const setMax = () => setAmountIn(fromBalance);
@@ -848,9 +857,20 @@ export default function App() {
           <button onClick={() => setShowChart(!showChart)} className="btn-secondary" style={{ padding: "8px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
             <BarChart3 size={16} /> Chart
           </button>
-          <button onClick={connectWallet} className="btn-primary" style={{ padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Wallet size={16} /> {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect"}
-          </button>
+          {account ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button className="btn-primary" style={{ padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "700" }}>
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </button>
+              <button onClick={disconnectWallet} className="btn-secondary" style={{ padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center" }}>
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <button onClick={connectWallet} className="btn-primary" style={{ padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
+              <Wallet size={16} /> Connect
+            </button>
+          )}
         </div>
       </header>
 
