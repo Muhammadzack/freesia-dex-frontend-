@@ -676,7 +676,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
             <div>
               <h4 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "16px" }}>Developers</h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <a href="#" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><GitHubIcon size={12} /> GitHub</a>
+                <a href="https://github.com/Muhammadzack" target="_blank" rel="noreferrer" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><GitHubIcon size={12} /> GitHub</a>
                 <a href="#" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><FileText size={12} /> Docs</a>
                 <a href="#" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><ExternalLink size={12} /> Explorer</a>
               </div>
@@ -685,7 +685,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               <h4 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "16px" }}>Community</h4>
               <div style={{ display: "flex", gap: "12px" }}>
                 <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><TwitterIcon size={16} /></a>
-                <a href="#" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><GitHubIcon size={16} /></a>
+                <a href="https://github.com/Muhammadzack" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><GitHubIcon size={16} /></a>
                 <a href="#" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><MessageCircle size={16} /></a>
               </div>
             </div>
@@ -1266,7 +1266,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
         <div style={{ maxWidth: "480px", margin: "0 auto", textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginBottom: "16px" }}>
             <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><TwitterIcon size={16} /></a>
-            <a href="#" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><GitHubIcon size={16} /></a>
+            <a href="https://github.com/Muhammadzack" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><GitHubIcon size={16} /></a>
             <a href="#" className="btn-secondary" style={{ padding: "8px", borderRadius: "10px" }}><MessageCircle size={16} /></a>
           </div>
           <p style={{ fontSize: "12px", color: T.sub, margin: 0 }}>© 2026 Freesia DEX. Built by <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: T.accent, textDecoration: "none", fontWeight: "600" }}>@0xzackbh</a> on LitVM Testnet.</p>
