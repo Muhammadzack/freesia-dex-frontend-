@@ -32,8 +32,8 @@ const TOKEN_LIST = {
   MBG:   { name: "MBG",   logo: "🌸", decimals: 18, address: "0x3333333333333333333333333333333333333333" },
 };
 
-const LITVM_RPC = "https://rpc-testnet.litvm.network";
-const CHAIN_ID = 1337;
+const LITVM_RPC = "https://rpc-litvm.pro";
+const CHAIN_ID = 4441;
 
 const CONTRACT_ABI = [
   "function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut) external",
@@ -297,13 +297,13 @@ export default function App() {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+        params: [{ chainId: "0x1159" }],
       });
     } catch {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: "0x" + CHAIN_ID.toString(16),
+          chainId: "0x1159",
           chainName: "LitVM Testnet",
           rpcUrls: [LITVM_RPC],
           nativeCurrency: { name: "zkLTC", symbol: "zkLTC", decimals: 18 },
