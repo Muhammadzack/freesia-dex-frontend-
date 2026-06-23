@@ -1,8 +1,4 @@
-
-# Create ONE complete App.jsx file - everything in one file
-# LandingPage + DEX + Dashboard + Staking + TradingView + Updated Logo
-
-complete_app = r'''import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
   ArrowUpDown, Settings, CheckCircle2, AlertCircle, X,
