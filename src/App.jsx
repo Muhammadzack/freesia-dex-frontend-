@@ -1024,9 +1024,14 @@ const fromBalance = mintBalances[fromToken] || "0.00";
                       <div style={{ fontSize: "12px", color: T.sub }}>Saldo: {mintBalances[sym] || "0.00"} {sym}</div>
                     </div>
                   </div>
-                  <button onClick={() => handleMint(sym)} className="btn-primary" style={{ padding: "10px 16px", borderRadius: "10px", fontSize: "13px", fontWeight: "700" }}>
-                    Mint
-                  </button>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={() => handleMint(sym)} className="btn-primary" style={{ padding: "10px 16px", borderRadius: "10px", fontSize: "13px", fontWeight: "700" }}>
+                      Mint
+                    </button>
+                    <button onClick={() => { if(account) refreshBalances(contract, account); }} className="btn-secondary" style={{ padding: "10px 16px", borderRadius: "10px", fontSize: "13px", fontWeight: "700" }}>
+                      Refresh
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
