@@ -126,6 +126,19 @@ const THEME = {
 
 const Users = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 
+const FreesiaLogo = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" style={{ display: "inline-block", verticalAlign: "middle", marginRight: "6px" }}>
+    <defs>
+      <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+        <stop offset="0%" stopColor="#F472B6"/>
+        <stop offset="100%" stopColor="#DB2777"/>
+      </linearGradient>
+    </defs>
+    <circle cx="20" cy="20" r="18" fill="url(#logoGrad)"/>
+    <text x="20" y="27" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="Georgia, serif">f</text>
+  </svg>
+);
+
 export default function App() {
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
@@ -261,9 +274,9 @@ export default function App() {
   const connectWallet = async () => {
     if (!window.ethereum) { showToast("Install MetaMask!", "⚠️"); return; }
     try {
-      const prov = new ethers.BrowserProvider(window.ethereum, "any");
+      const prov = new ethers.BrowserProvider(window.ethereum);
       await prov.send("eth_requestAccounts", []);
-      const sig = prov.getSigner();
+      const sig = await prov.getSigner();
       const addr = await sig.getAddress();
       const net = await prov.getNetwork();
       setProvider(prov);
@@ -514,7 +527,7 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: "Inter, -apple-system, sans-serif", transition: "background 0.3s, color 0.3s" }}>
         <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: T.bg, zIndex: 100, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "20px", fontWeight: "800", color: T.accent, letterSpacing: "-0.5px" }}>
-            <span style={{ fontSize: "24px" }}>🌸</span> Freesia DEX
+            <FreesiaLogo size={24} /> Freesia DEX
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {!isMobile && (
@@ -639,7 +652,7 @@ export default function App() {
           <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: "32px" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "18px", fontWeight: "800", color: T.accent, marginBottom: "16px" }}>
-                <span style={{ fontSize: "22px" }}>🌸</span> Freesia DEX
+                <FreesiaLogo size={22} /> Freesia DEX
               </div>
               <p style={{ color: T.sub, fontSize: "14px", lineHeight: 1.6, margin: 0 }}>The first decentralized exchange on LitVM Testnet with integrated IL simulator.</p>
             </div>
@@ -812,13 +825,13 @@ export default function App() {
       {/* Banner */}
       <div style={{ background: `linear-gradient(90deg, ${T.accent}20, ${T.accent}05)`, borderBottom: `1px solid ${T.accent}30`, padding: "10px 24px", textAlign: "center", fontSize: "13px", fontWeight: "600", color: T.accent }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Info size={14} /> The First DEX on LitVM Network with Integrated Impermanent Loss Risk Simulator.</span>
-        <span style={{ marginLeft: "8px", opacity: 0.8 }}>DEX Pertama di Jaringan LitVM dengan Simulator Risiko Impermanent Loss Terintegrasi</span>
+        <span style={{ marginLeft: "8px", opacity: 0.8 }}></span>
       </div>
 
       {/* Header */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderBottom: `1px solid ${T.border}`, background: T.bg, position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "18px", fontWeight: "800", color: T.accent, cursor: "pointer" }} onClick={() => setShowLanding(true)}>
-          <span style={{ fontSize: "22px" }}>🌸</span> Freesia DEX
+          <FreesiaLogo size={22} /> Freesia DEX
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: T.green, background: "rgba(16, 185, 129, 0.1)", padding: "4px 10px", borderRadius: "999px" }}>
