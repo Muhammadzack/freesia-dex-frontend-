@@ -26,10 +26,10 @@ const TwitterIcon = ({ size = 20, className = "" }) => (
 // ========================================================================
 
 const TOKEN_LIST = {
-  zkLTC: { name: "zkLTC", logo: "⚡", decimals: 18, address: "0x0000000000000000000000000000000000000000" },
-  USDC:  { name: "USDC",  logo: "💵", decimals: 6,  address: "0x1111111111111111111111111111111111111111" },
-  DAI:   { name: "DAI",   logo: "🔷", decimals: 18, address: "0x2222222222222222222222222222222222222222" },
-  MBG:   { name: "MBG",   logo: "🌸", decimals: 18, address: "0x3333333333333333333333333333333333333333" },
+  zkLTC: { name: "zkLTC", logo: "https://cryptologos.cc/logos/litecoin-ltc-logo.png", decimals: 18, address: "0x0000000000000000000000000000000000000000" },
+  USDC:  { name: "USDC",  logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png", decimals: 6,  address: "0x1111111111111111111111111111111111111111" },
+  DAI:   { name: "DAI",   logo: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", decimals: 18, address: "0x2222222222222222222222222222222222222222" },
+  MBG:   { name: "MBG",   logo: "https://cryptologos.cc/logos/sakura-sakura-logo.png", decimals: 18, address: "0x3333333333333333333333333333333333333333" },
 };
 
 const LITVM_RPC = "https://rpc-litvm.pro";
@@ -286,7 +286,7 @@ export default function App() {
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, sig);
       setContract(ctr);
       showToast("Wallet connected!", "✅");
-      await refreshBalances(ctr, addr);
+      await refreshBalances(ctr, addr, prov);
     } catch (e) {
       showToast("Connection failed", "❌");
       console.error(e);
@@ -313,15 +313,17 @@ export default function App() {
     }
   };
 
-  const refreshBalances = async (ctr, addr) => {
+  const refreshBalances = async (ctr, addr, prov) => {
     try {
+      const providerToUse = prov || provider;
+      if (!providerToUse || !addr) return;
       const balances = {};
       for (const [sym, info] of Object.entries(TOKEN_LIST)) {
         if (sym === "zkLTC") {
-          const bal = await provider.getBalance(addr);
+          const bal = await providerToUse.getBalance(addr);
           balances[sym] = parseFloat(ethers.formatEther(bal)).toFixed(4);
         } else {
-          const tokenContract = new ethers.Contract(info.address, ["function balanceOf(address) view returns (uint256)"], provider);
+          const tokenContract = new ethers.Contract(info.address, ["function balanceOf(address) view returns (uint256)"], providerToUse);
           const bal = await tokenContract.balanceOf(addr);
           balances[sym] = parseFloat(ethers.formatUnits(bal, info.decimals)).toFixed(4);
         }
@@ -773,7 +775,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {Object.entries(TOKEN_LIST).map(([sym, info]) => (
                 <button key={sym} onClick={() => { if (showTokenSelector === "from") setFromToken(sym); else setToToken(sym); setShowTokenSelector(null); }} className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "12px", textAlign: "left", fontSize: "16px", fontWeight: "600" }}>
-                  <span style={{ fontSize: "24px" }}>{info.logo}</span>
+                  <img src={info.logo} alt={sym} style={{width:24,height:24,borderRadius:"50%"}} />
                   <div>
                     <div>{sym}</div>
                     <div style={{ fontSize: "12px", color: T.sub, fontWeight: "400" }}>{info.name}</div>
@@ -931,7 +933,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                 <input value={amountIn} onChange={e => setAmountIn(e.target.value)} style={{ background: "transparent", border: "none", color: T.text, fontSize: "28px", width: "100%", outline: "none", fontWeight: "700", fontFamily: "monospace" }} placeholder="0.0" />
                 <button onClick={() => setShowTokenSelector("from")} className="btn-secondary token-btn" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 12px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", whiteSpace: "nowrap" }}>
-                  <span>{TOKEN_LIST[fromToken].logo}</span> {fromToken} <ChevronDown size={14} />
+                  <img src={TOKEN_LIST[fromToken].logo} alt={fromToken} style={{width:20,height:20,borderRadius:"50%"}} /> {fromToken} <ChevronDown size={14} />
                 </button>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
@@ -953,7 +955,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                 <div style={{ fontSize: "28px", fontWeight: "700", fontFamily: "monospace", color: T.text, flex: 1 }}>{amountOut}</div>
                 <button onClick={() => setShowTokenSelector("to")} className="btn-secondary token-btn" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 12px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", whiteSpace: "nowrap" }}>
-                  <span>{TOKEN_LIST[toToken].logo}</span> {toToken} <ChevronDown size={14} />
+                  <img src={TOKEN_LIST[toToken].logo} alt={toToken} style={{width:20,height:20,borderRadius:"50%"}} /> {toToken} <ChevronDown size={14} />
                 </button>
               </div>
             </div>
@@ -1219,7 +1221,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
                 {Object.entries(TOKEN_LIST).map(([sym, info]) => (
                   <div key={sym} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: T.input, borderRadius: "10px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span>{info.logo}</span>
+                      <img src={info.logo} alt={sym} style={{width:24,height:24,borderRadius:"50%"}} />
                       <span style={{ fontWeight: "700" }}>{sym}</span>
                     </div>
                     <span style={{ fontWeight: "600", fontFamily: "monospace" }}>{mintBalances[sym] || "0.00"}</span>
