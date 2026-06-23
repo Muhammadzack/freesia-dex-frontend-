@@ -956,9 +956,6 @@ export default function App() {
   );
 }
 
-with open('/mnt/agents/output/App_Complete.jsx', 'w', encoding='utf-8') as f:
-    f.write(complete_app)
-
 print("COMPLETE App.jsx saved!")
 print(f"Size: {len(complete_app)} characters")
 print(f"Lines: {complete_app.count(chr(10))}")
