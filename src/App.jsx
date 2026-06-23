@@ -126,16 +126,31 @@ const THEME = {
 
 const Users = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 
-const FreesiaLogo = ({ size = 28 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" style={{ display: "inline-block", verticalAlign: "middle", marginRight: "6px" }}>
+const FreesiaLogo = ({ size = 36 }) => (
+  <svg width={size} height={size} viewBox="0 0 200 200" style={{ display: "inline-block", verticalAlign: "middle", marginRight: "6px" }}>
     <defs>
-      <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-        <stop offset="0%" stopColor="#F472B6"/>
-        <stop offset="100%" stopColor="#DB2777"/>
+      <linearGradient id="fl1" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#5EEAD4"/>
+        <stop offset="100%" stopColor="#0E7490"/>
+      </linearGradient>
+      <linearGradient id="fl2" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#2DD4BF"/>
+        <stop offset="100%" stopColor="#155E75"/>
       </linearGradient>
     </defs>
-    <circle cx="20" cy="20" r="18" fill="url(#logoGrad)"/>
-    <text x="20" y="27" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="Georgia, serif">f</text>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl1)" transform="rotate(0 100 100)"/>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl2)" transform="rotate(60 100 100)"/>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl1)" transform="rotate(120 100 100)"/>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl2)" transform="rotate(180 100 100)"/>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl1)" transform="rotate(240 100 100)"/>
+    <path d="M100 100 C100 40 130 20 150 50 C170 80 130 90 100 100Z" fill="url(#fl2)" transform="rotate(300 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(30 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(90 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(150 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(210 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(270 100 100)"/>
+    <path d="M100 100 C100 60 115 50 125 65 C135 80 115 85 100 100Z" fill="#fff" opacity="0.95" transform="rotate(330 100 100)"/>
+    <circle cx="100" cy="100" r="8" fill="#0E7490"/>
   </svg>
 );
 
@@ -307,7 +322,7 @@ export default function App() {
           chainName: "LitVM Testnet",
           rpcUrls: [LITVM_RPC],
           nativeCurrency: { name: "zkLTC", symbol: "zkLTC", decimals: 18 },
-          blockExplorerUrls: ["https://explorer-testnet.litvm.network"],
+          blockExplorerUrls: ["https://liteforge.explorer.caldera.xyz/"],
         }],
       });
     }
@@ -500,7 +515,7 @@ export default function App() {
 
   const handleShare = () => {
     if (!lastSwap) return;
-    const text = `Just swapped ${lastSwap.amountIn} ${lastSwap.fromSym} → ${lastSwap.outAmt} ${lastSwap.toSym} on Freesia DEX 🌸\\nBuilt on LitVM Testnet ⚡\\n@0xzackbh #FreesiaDEX`;
+    const text = `Just swapped ${lastSwap.amountIn} ${lastSwap.fromSym} → ${lastSwap.outAmt} ${lastSwap.toSym} on Freesia DEX <FreesiaLogo size={20} />\\nBuilt on LitVM Testnet ⚡\\n@0xzackbh #FreesiaDEX`;
     navigator.clipboard.writeText(text);
     showToast("Copied to clipboard!", "📋");
     setShowShareModal(false);
@@ -680,7 +695,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <a href="https://github.com/Muhammadzack" target="_blank" rel="noreferrer" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><GitHubIcon size={12} /> GitHub</a>
                 <a href="#" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><FileText size={12} /> Docs</a>
-                <a href="#" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><ExternalLink size={12} /> Explorer</a>
+                <a href="https://liteforge.explorer.caldera.xyz/" target="_blank" rel="noreferrer" className="footer-link" style={{ display: "flex", alignItems: "center", gap: "4px", color: T.sub, textDecoration: "none", fontSize: "14px" }}><ExternalLink size={12} /> Explorer</a>
               </div>
             </div>
             <div>
@@ -751,7 +766,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: T.sub, cursor: "pointer" }}><X size={20} /></button>
             </div>
             <div style={{ background: T.input, borderRadius: "12px", padding: "16px", marginBottom: "20px", fontSize: "14px", lineHeight: 1.6 }}>
-              Just swapped <strong>{lastSwap.amountIn} {lastSwap.fromSym}</strong> → <strong>{lastSwap.outAmt} {lastSwap.toSym}</strong> on <strong>Freesia DEX</strong> 🌸<br/>
+              Just swapped <strong>{lastSwap.amountIn} {lastSwap.fromSym}</strong> → <strong>{lastSwap.outAmt} {lastSwap.toSym}</strong> on <strong>Freesia DEX</strong> <FreesiaLogo size={20} /><br/>
               Built on <strong>LitVM Testnet</strong> ⚡<br/>
               @0xzackbh #FreesiaDEX
             </div>
@@ -999,7 +1014,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
               {Object.entries(TOKEN_LIST).map(([sym, info]) => (
                 <div key={sym} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: T.input, borderRadius: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "28px" }}>{info.logo}</span>
+                    <img src={info.logo} alt={sym} style={{width:28,height:28,borderRadius:"50%"}} />
                     <div>
                       <div style={{ fontWeight: "700" }}>{sym}</div>
                       <div style={{ fontSize: "12px", color: T.sub }}>Saldo: {mintBalances[sym] || "0.00"} {sym}</div>
