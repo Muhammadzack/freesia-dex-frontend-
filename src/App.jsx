@@ -955,7 +955,6 @@ export default function App() {
     </div>
   );
 }
-'''
 
 with open('/mnt/agents/output/App_Complete.jsx', 'w', encoding='utf-8') as f:
     f.write(complete_app)
