@@ -301,7 +301,7 @@ export default function App() {
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, sig);
       setContract(ctr);
       showToast("Wallet connected!", "✅");
-      await refreshBalances(ctr, addr, prov);
+      await refreshBalances(ctr, addr);
     } catch (e) {
       showToast("Connection failed", "❌");
       console.error(e);
@@ -330,20 +330,21 @@ export default function App() {
 
   const refreshBalances = async (ctr, addr, prov) => {
     try {
-      const providerToUse = prov || provider;
+      const prov = new ethers.BrowserProvider(window.ethereum);
       if (!providerToUse || !addr) return;
       const balances = {};
       for (const [sym, info] of Object.entries(TOKEN_LIST)) {
         if (sym === "zkLTC") {
-          const bal = await providerToUse.getBalance(addr);
+          const bal = await prov.getBalance(addr);
           balances[sym] = parseFloat(ethers.formatEther(bal)).toFixed(4);
         } else {
-          const tokenContract = new ethers.Contract(info.address, ["function balanceOf(address) view returns (uint256)"], providerToUse);
+          const tokenContract = new ethers.Contract(info.address, ["function balanceOf(address) view returns (uint256)"], prov);
           const bal = await tokenContract.balanceOf(addr);
           balances[sym] = parseFloat(ethers.formatUnits(bal, info.decimals)).toFixed(4);
         }
       }
       setMintBalances(balances);
+      console.log("Balances refreshed:", balances);
       const lpBal = await ctr.getUserLPBalance(addr);
       setUserLPBalance(parseFloat(ethers.formatEther(lpBal)));
       const poolInfo = await ctr.getPoolInfo();
@@ -1049,7 +1050,7 @@ const fromBalance = mintBalances[fromToken] || "0.00";
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: T.input, borderRadius: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span>⚡</span><span>💵</span>
+                    <img src={TOKEN_LIST.zkLTC.logo} alt="zkLTC" style={{width:20,height:20,borderRadius:"50%"}} /><span>💵</span>
                     <span style={{ fontWeight: "700" }}>zkLTC / USDC</span>
                   </div>
                   <div style={{ textAlign: "right" }}>
