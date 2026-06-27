@@ -468,43 +468,177 @@ function PoolPanel({ account, signer, provider, balances, updateBalances, showTo
   );
 }
 
-/* ============ IL SIMULATOR ============ */
+/* ============ IL SIMULATOR + FEE CALCULATOR ============ */
 function ILSimulatorPanel({ theme }) {
+  // 4 preset scenarios
+  const presets = [
+    { name: "Stable", a: 0, b: 0, desc: "Both tokens stable" },
+    { name: "Bull", a: 100, b: 0, desc: "Token A 2x, Token B flat" },
+    { name: "Bear", a: -50, b: 0, desc: "Token A -50%, Token B flat" },
+    { name: "Extreme", a: 300, b: 0, desc: "Token A 4x, Token B flat" },
+  ];
+
   const [priceA, setPriceA] = useState(0);
-  const [priceB, setPriceB] = useState(50);
+  const [priceB, setPriceB] = useState(0);
   const [depositA, setDepositA] = useState(1000);
   const [depositB, setDepositB] = useState(1000);
+  // Fee calculator states
+  const [dailyVolume, setDailyVolume] = useState(50000);
+  const [feeRate, setFeeRate] = useState(0.3);
+  const [days, setDays] = useState(30);
 
+  // IL calculations
   const P = (1 + priceA / 100) / (1 + priceB / 100);
   const il = (2 * Math.sqrt(P) / (1 + P) - 1) * 100;
   const hodl = depositA * (1 + priceA / 100) + depositB * (1 + priceB / 100);
   const poolVal = (depositA + depositB) * Math.sqrt((1 + priceA / 100) * (1 + priceB / 100));
+  const lossAmount = hodl - poolVal;
+  const totalDeposit = depositA + depositB;
 
-  const card = { backgroundColor: theme.card, borderRadius: 24, padding: 24, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 500 };
+  // Fee calculations
+  const poolShare = totalDeposit / (totalDeposit + dailyVolume * 10); // Estimasi pool 10x daily vol
+  const dailyFee = dailyVolume * (feeRate / 100) * poolShare;
+  const totalFee = dailyFee * days;
+  const netPnl = totalFee - lossAmount;
+
+  // Risk colors
+  const riskColor = Math.abs(il) < 1 ? theme.green : Math.abs(il) < 5 ? theme.yellow : theme.red;
+  const riskLabel = Math.abs(il) < 1 ? "SAFE" : Math.abs(il) < 5 ? "MODERATE" : "HIGH RISK";
+  const profitColor = netPnl >= 0 ? theme.green : theme.red;
+
+  const card = { backgroundColor: theme.card, borderRadius: 24, padding: 24, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 540 };
   const inp = { padding: 12, backgroundColor: theme.input, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.text, fontWeight: 700, fontSize: 14, width: "100%", boxSizing: "border-box" };
 
   return (
     <div style={card}>
-      <h3 style={{ margin: "0 0 8px 0", fontSize: 20, fontWeight: 800 }}><AlertTriangle size={20} style={{ verticalAlign: "middle", marginRight: 8, color: theme.yellow }} />IL Risk Simulator</h3>
-      <p style={{ fontSize: 13, color: theme.sub, marginBottom: 20 }}>Preview impermanent loss before adding liquidity</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-        <div><label style={{ fontSize: 12, color: theme.sub, marginBottom: 4, display: "block" }}>Deposit A ($)</label><input type="number" value={depositA} onChange={e => setDepositA(Number(e.target.value))} style={inp} /></div>
-        <div><label style={{ fontSize: 12, color: theme.sub, marginBottom: 4, display: "block" }}>Deposit B ($)</label><input type="number" value={depositB} onChange={e => setDepositB(Number(e.target.value))} style={inp} /></div>
+      <h3 style={{ margin: "0 0 8px 0", fontSize: 20, fontWeight: 800 }}>
+        <AlertTriangle size={20} style={{ verticalAlign: "middle", marginRight: 8, color: theme.yellow }} />
+        IL Risk Simulator
+      </h3>
+      <p style={{ fontSize: 13, color: theme.sub, marginBottom: 16 }}>
+        "Kalau harga token berubah, berapa rugi/ruginya kalau simpan di pool vs simpan di wallet?"
+      </p>
+
+      {/* Presets */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+        {presets.map(p => (
+          <button key={p.name} onClick={() => { setPriceA(p.a); setPriceB(p.b); }} style={{
+            padding: "8px 4px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer",
+            backgroundColor: priceA === p.a && priceB === p.b ? theme.accent : theme.input,
+            color: priceA === p.a && priceB === p.b ? "#fff" : theme.sub
+          }}>
+            <div>{p.name}</div>
+            <div style={{ fontSize: 9, fontWeight: 500, opacity: 0.8 }}>{p.desc}</div>
+          </button>
+        ))}
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 12, color: theme.sub, marginBottom: 8, display: "block" }}>Token A Price Change: <strong>{priceA}%</strong></label>
+
+      {/* Deposits */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+        <div><label style={{ fontSize: 12, color: theme.sub, marginBottom: 4, display: "block" }}>Deposit Token A ($)</label><input type="number" value={depositA} onChange={e => setDepositA(Number(e.target.value))} style={inp} /></div>
+        <div><label style={{ fontSize: 12, color: theme.sub, marginBottom: 4, display: "block" }}>Deposit Token B ($)</label><input type="number" value={depositB} onChange={e => setDepositB(Number(e.target.value))} style={inp} /></div>
+      </div>
+
+      {/* Sliders */}
+      <div style={{ marginBottom: 12, padding: 12, backgroundColor: theme.input, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+        <label style={{ fontSize: 13, color: theme.sub, marginBottom: 6, display: "block" }}>
+          Token A Price Change: <strong style={{ color: priceA >= 0 ? theme.green : theme.red }}>{priceA >= 0 ? "+" : ""}{priceA}%</strong>
+        </label>
         <input type="range" min={-90} max={500} value={priceA} onChange={e => setPriceA(Number(e.target.value))} style={{ width: "100%" }} />
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 12, color: theme.sub, marginBottom: 8, display: "block" }}>Token B Price Change: <strong>{priceB}%</strong></label>
+      <div style={{ marginBottom: 20, padding: 12, backgroundColor: theme.input, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+        <label style={{ fontSize: 13, color: theme.sub, marginBottom: 6, display: "block" }}>
+          Token B Price Change: <strong style={{ color: priceB >= 0 ? theme.green : theme.red }}>{priceB >= 0 ? "+" : ""}{priceB}%</strong>
+        </label>
         <input type="range" min={-90} max={500} value={priceB} onChange={e => setPriceB(Number(e.target.value))} style={{ width: "100%" }} />
       </div>
-      <div style={{ backgroundColor: theme.input, padding: 20, borderRadius: 16, border: `1px solid ${theme.border}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><span style={{ color: theme.sub }}>HODL Value</span><strong>${hodl.toFixed(2)}</strong></div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><span style={{ color: theme.sub }}>Pool Value</span><strong>${poolVal.toFixed(2)}</strong></div>
-        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, borderTop: `1px solid ${theme.border}` }}>
-          <span style={{ fontWeight: 700 }}>Impermanent Loss</span><strong style={{ color: il <= 0 ? theme.green : theme.red, fontSize: 20 }}>{il.toFixed(2)}%</strong>
+
+      {/* IL Result */}
+      <div style={{ backgroundColor: theme.input, padding: 20, borderRadius: 16, border: `1px solid ${theme.border}`, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 14 }}>
+          <span style={{ color: theme.sub }}>💰 Simpan di Wallet (HODL)</span><strong>${hodl.toFixed(2)}</strong>
         </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 14 }}>
+          <span style={{ color: theme.sub }}>🏊 Simpan di Pool</span><strong>${poolVal.toFixed(2)}</strong>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, fontSize: 14, paddingBottom: 10, borderBottom: `1px solid ${theme.border}` }}>
+          <span style={{ color: theme.sub }}>📉 Rugi IL</span><strong style={{ color: theme.red }}>-${lossAmount.toFixed(2)}</strong>
+        </div>
+        <div style={{ textAlign: "center", padding: "6px 0" }}>
+          <div style={{ fontSize: 12, color: theme.sub, marginBottom: 4 }}>Impermanent Loss</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: riskColor }}>{il.toFixed(2)}%</div>
+          <div style={{ display: "inline-block", marginTop: 4, padding: "3px 12px", borderRadius: 10, fontSize: 11, fontWeight: 800, backgroundColor: riskColor + "20", color: riskColor, border: `1px solid ${riskColor}` }}>{riskLabel}</div>
+        </div>
+      </div>
+
+      {/* ═══════ FEE CALCULATOR (NEW!) ═══════ */}
+      <div style={{ backgroundColor: "#ecfdf5", padding: 20, borderRadius: 16, border: "1px solid #a7f3d0", marginBottom: 20 }}>
+        <h4 style={{ margin: "0 0 14px 0", fontSize: 16, fontWeight: 800, color: "#065f46" }}>
+          💵 Fee Calculator (Offset IL)
+        </h4>
+        <p style={{ fontSize: 12, color: "#047857", marginBottom: 14 }}>
+          Hitung berapa fee yang kamu dapatkan dari trading pool untuk menutupi rugi IL
+        </p>
+
+        {/* Fee inputs */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#065f46", marginBottom: 4, display: "block" }}>Daily Volume ($)</label>
+            <input type="number" value={dailyVolume} onChange={e => setDailyVolume(Number(e.target.value))} style={{ ...inp, borderColor: "#a7f3d0", backgroundColor: "#fff" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#065f46", marginBottom: 4, display: "block" }}>Fee Rate (%)</label>
+            <select value={feeRate} onChange={e => setFeeRate(Number(e.target.value))} style={{ ...inp, borderColor: "#a7f3d0", backgroundColor: "#fff" }}>
+              <option value={0.1}>0.1%</option>
+              <option value={0.3}>0.3%</option>
+              <option value={0.5}>0.5%</option>
+              <option value={1.0}>1.0%</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#065f46", marginBottom: 4, display: "block" }}>Hari</label>
+            <select value={days} onChange={e => setDays(Number(e.target.value))} style={{ ...inp, borderColor: "#a7f3d0", backgroundColor: "#fff" }}>
+              <option value={7}>7 hari</option>
+              <option value={30}>30 hari</option>
+              <option value={90}>90 hari</option>
+              <option value={365}>365 hari</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Fee results */}
+        <div style={{ backgroundColor: "#fff", padding: 16, borderRadius: 12, border: "1px solid #a7f3d0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
+            <span style={{ color: "#065f46" }}>Pool Share (estimasi)</span>
+            <strong>{(poolShare * 100).toFixed(2)}%</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
+            <span style={{ color: "#065f46" }}>Fee per hari</span>
+            <strong style={{ color: "#059669" }}>+${dailyFee.toFixed(2)}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 13, paddingBottom: 10, borderBottom: "1px solid #a7f3d0" }}>
+            <span style={{ color: "#065f46" }}>Fee {days} hari</span>
+            <strong style={{ color: "#059669" }}>+${totalFee.toFixed(2)}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 800 }}>
+            <span style={{ color: "#065f46" }}>Nett (Fee - IL)</span>
+            <strong style={{ color: profitColor }}>{netPnl >= 0 ? "+" : ""}${netPnl.toFixed(2)}</strong>
+          </div>
+        </div>
+
+        {/* Verdict */}
+        <div style={{ marginTop: 12, padding: 10, borderRadius: 10, fontSize: 12, fontWeight: 700, textAlign: "center", backgroundColor: netPnl >= 0 ? "#dcfce7" : "#fef3c7", color: netPnl >= 0 ? "#166534" : "#92400e" }}>
+          {netPnl >= 0
+            ? `✅ Worth it! Fee menutupi IL dalam ${days} hari`
+            : `⚠️ Belum worth it. Butuh ${Math.ceil(lossAmount / dailyFee)} hari untuk break-even`
+          }
+        </div>
+      </div>
+
+      {/* Education */}
+      <div style={{ padding: 12, backgroundColor: "#e0f2fe", borderRadius: 10, fontSize: 12, color: "#0c4a6e" }}>
+        <strong>💡 Apa itu Impermanent Loss?</strong><br />
+        Ketika harga 2 token di pool berubah tidak sama, DEX otomatis menjual token yang naik dan membeli token yang turun. Ini membuat nilai aset di pool lebih rendah daripada jika kamu hanya menyimpan token di wallet. Fee dari trader bisa menutupi rugi IL jika volume cukup tinggi.
       </div>
     </div>
   );
