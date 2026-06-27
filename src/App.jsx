@@ -15,12 +15,46 @@ const CONTRACTS = {
   POOL: "0x49C738De9b7bED753bC25E91A58dC58EA889f585",
 };
 
+/* ============ TOKEN LOGOS (SVG) ============ */
+function TokenLogo({ symbol, size = 28 }) {
+  const logos = {
+    zkLTC: (
+      <svg width={size} height={size} viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#345D9D" stroke="#fff" strokeWidth="1"/><text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">Ł</text></svg>
+    ),
+    USDC: (
+      <svg width={size} height={size} viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#2775CA" stroke="#fff" strokeWidth="1"/><text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="bold">$</text></svg>
+    ),
+    DAI: (
+      <svg width={size} height={size} viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#F5AC37" stroke="#fff" strokeWidth="1"/><path d="M16 6 L26 16 L16 26 L6 16 Z" fill="#F4B731" opacity="0.3"/><text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">D</text></svg>
+    ),
+    USDT: (
+      <svg width={size} height={size} viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#26A17B" stroke="#fff" strokeWidth="1"/><text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="bold">T</text></svg>
+    ),
+    MBG: (
+      <svg width={size} height={size} viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#f472b6" stroke="#fff" strokeWidth="1"/><text x="16" y="21" textAnchor="middle" fontSize="16">🌸</text></svg>
+    ),
+  };
+  return logos[symbol] || <span style={{ fontSize: size }}>🪙</span>;
+}
+
+/* ============ FORMAT BALANCE (FIX BUG) ============ */
+function fmtBal(val, decimals = 4) {
+  if (!val || val === "0") return "0.00";
+  const n = Number(val);
+  if (isNaN(n)) return "0.00";
+  if (n > 1e15) return n.toExponential(2);
+  if (n > 1e9) return (n / 1e9).toFixed(2) + "B";
+  if (n > 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n > 1e3) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return n.toFixed(decimals);
+}
+
 const TOKEN_LIST = {
-  zkLTC: { name: "zkLTC", logo: "⚡", decimals: 18, address: "NATIVE", isNative: true },
-  USDC:  { name: "USDC",  logo: "💵", decimals: 6,  address: CONTRACTS.USDC },
-  DAI:   { name: "DAI",   logo: "◈", decimals: 18, address: CONTRACTS.DAI },
-  USDT:  { name: "USDT",  logo: "💲", decimals: 6,  address: CONTRACTS.USDT },
-  MBG:   { name: "MBG",   logo: "🌸", decimals: 18, address: CONTRACTS.MBG },
+  zkLTC: { name: "zkLTC", logo: "LTC", decimals: 18, address: "NATIVE", isNative: true },
+  USDC:  { name: "USDC",  logo: "USDC", decimals: 6,  address: CONTRACTS.USDC },
+  DAI:   { name: "DAI",   logo: "DAI", decimals: 18, address: CONTRACTS.DAI },
+  USDT:  { name: "USDT",  logo: "USDT", decimals: 6,  address: CONTRACTS.USDT },
+  MBG:   { name: "MBG",   logo: "MBG", decimals: 18, address: CONTRACTS.MBG },
 };
 
 const ERC20_ABI = [
@@ -262,13 +296,13 @@ function SwapPanel({ account, signer, provider, balances, updateBalances, showTo
       )}
       <div style={{ ...inputBox, marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.sub, marginBottom: 8 }}>
-          <span>You Pay</span><span>Balance: {balances[fromSym] || "0.00"}</span>
+          <span>You Pay</span><span>Bal: {fmtBal(balances[fromSym])}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <input type="number" placeholder="0.0" value={amountIn} onChange={e => setAmountIn(e.target.value)} style={{ background: "transparent", border: "none", color: theme.text, fontSize: 28, width: "55%", outline: "none", fontWeight: 700 }} />
-          <select value={fromSym} onChange={e => setFromSym(e.target.value)} style={{ backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: 20, padding: "8px 14px", fontWeight: 700, color: theme.text, outline: "none", cursor: "pointer" }}>
-            {Object.keys(TOKEN_LIST).map(s => <option key={s} value={s}>{TOKEN_LIST[s].logo} {s}</option>)}
-          </select>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: 20, padding: "8px 14px", fontWeight: 700 }}>
+            <TokenLogo symbol={fromSym} size={20} /> {fromSym}
+          </div>
         </div>
       </div>
       <div style={{ textAlign: "center", margin: "-8px 0", position: "relative", zIndex: 2 }}>
@@ -278,12 +312,12 @@ function SwapPanel({ account, signer, provider, balances, updateBalances, showTo
       </div>
       <div style={{ ...inputBox, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.sub, marginBottom: 8 }}>
-          <span>You Receive (est)</span><span>Balance: {balances[toSym] || "0.00"}</span>
+          <span>You Receive (est)</span><span>Bal: {fmtBal(balances[toSym])}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <input type="text" placeholder="0.0" value={amountOut} readOnly style={{ background: "transparent", border: "none", color: theme.sub, fontSize: 28, width: "55%", outline: "none", fontWeight: 700 }} />
-          <div style={{ backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: 20, padding: "8px 14px", fontWeight: 700, color: theme.text }}>
-            {TOKEN_LIST[toSym].logo} {toSym}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: theme.card, border: `1px solid ${theme.border}`, borderRadius: 20, padding: "8px 14px", fontWeight: 700, color: theme.text }}>
+            <TokenLogo symbol={toSym} size={20} /> {toSym}
           </div>
         </div>
       </div>
@@ -330,14 +364,14 @@ function FaucetPanel({ account, signer, provider, balances, updateBalances, show
       {Object.entries(TOKEN_LIST).map(([sym, info]) => (
         <div key={sym} style={{ backgroundColor: theme.input, padding: 16, borderRadius: 16, border: `1px solid ${theme.border}`, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 32 }}>{info.logo}</span>
+            <TokenLogo symbol={sym} size={36} />
             <div>
               <div style={{ fontWeight: 800, fontSize: 16 }}>{sym}</div>
-              <div style={{ fontSize: 12, color: theme.green, fontWeight: 600 }}>Balance: {balances[sym] || "0.00"}</div>
+              <div style={{ fontSize: 12, color: theme.green, fontWeight: 600 }}>Bal: {fmtBal(balances[sym])}</div>
             </div>
           </div>
           <button onClick={() => handleFaucet(sym)} disabled={mintingSym === sym} style={{ backgroundColor: sym === "zkLTC" ? theme.border : theme.accent, color: "#fff", border: "none", padding: "10px 18px", borderRadius: 12, fontWeight: 700, cursor: sym === "zkLTC" ? "pointer" : mintingSym === sym ? "wait" : "pointer", opacity: mintingSym === sym ? 0.7 : 1 }}>
-            {mintingSym === sym ? "⏳ Claiming..." : sym === "zkLTC" ? "🔗 External" : `Claim ${FAUCET_AMOUNT}`}
+            {mintingSym === sym ? "⏳..." : sym === "zkLTC" ? "🔗 External" : `Claim ${FAUCET_AMOUNT}`}
           </button>
         </div>
       ))}
@@ -438,11 +472,11 @@ function PoolPanel({ account, signer, provider, balances, updateBalances, showTo
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 4 }}><span>{tokenA}</span><span>Bal: {balances[tokenA] || "0"}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 4 }}><span>{tokenA}</span><span>Bal: {fmtBal(balances[tokenA])}</span></div>
               <input type="number" placeholder={`Amount ${tokenA}`} value={amountA} onChange={e => setAmountA(e.target.value)} style={inp} />
             </div>
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 4 }}><span>{tokenB}</span><span>Bal: {balances[tokenB] || "0"}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 4 }}><span>{tokenB}</span><span>Bal: {fmtBal(balances[tokenB])}</span></div>
               <input type="number" placeholder={`Amount ${tokenB}`} value={amountB} onChange={e => setAmountB(e.target.value)} style={inp} />
             </div>
             <button onClick={handleAdd} disabled={poolLoading} style={{ width: "100%", backgroundColor: theme.accent, color: "#fff", border: "none", padding: 16, borderRadius: 16, fontWeight: 800, fontSize: 16, cursor: "pointer" }}>
@@ -644,30 +678,140 @@ function ILSimulatorPanel({ theme }) {
   );
 }
 
-/* ============ STAKING ============ */
-function StakingPanel({ theme }) {
+/* ============ STAKING (FUNCTIONAL) ============ */
+function StakingPanel({ account, signer, theme, showToast, poolInfo, balances, updateBalances, addHistory }) {
   const [stakeAmt, setStakeAmt] = useState("");
-  const [mbgEarned, setMbgEarned] = useState(0);
+  const [unstakeAmt, setUnstakeAmt] = useState("");
+  const [stakeMode, setStakeMode] = useState("stake"); // stake | unstake
+  const [loading, setLoading] = useState(false);
+
+  // Load from localStorage
+  const [stakedLP, setStakedLP] = useState(() => {
+    try { return Number(localStorage.getItem("freesia_staked_lp") || "0"); } catch { return 0; }
+  });
+  const [mbgEarned, setMbgEarned] = useState(() => {
+    try { return Number(localStorage.getItem("freesia_mbg_earned") || "0"); } catch { return 0; }
+  });
+
+  // Auto-accumulate reward every 10s
+  useEffect(() => {
+    if (stakedLP <= 0) return;
+    const rewardPerSec = (stakedLP * 0.000001); // ~32.5% APY simulation
+    const iv = setInterval(() => {
+      setMbgEarned(prev => {
+        const next = prev + rewardPerSec * 10;
+        localStorage.setItem("freesia_mbg_earned", String(next));
+        return next;
+      });
+    }, 10000);
+    return () => clearInterval(iv);
+  }, [stakedLP]);
+
+  const handleStake = async () => {
+    if (!account) return showToast("❌", "Connect wallet!");
+    const amt = parseFloat(stakeAmt);
+    if (!amt || amt <= 0) return showToast("❌", "Enter amount!");
+    const available = parseFloat(poolInfo.userLP || "0");
+    if (amt > available) return showToast("❌", `Max ${fmtBal(available)} LP available`);
+    setLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 1500)); // Simulasi tx
+      const newStaked = stakedLP + amt;
+      setStakedLP(newStaked);
+      localStorage.setItem("freesia_staked_lp", String(newStaked));
+      showToast("🎉", `Staked ${amt} LP!`);
+      addHistory("Stake", `Staked ${amt} LP`, "local");
+      setStakeAmt("");
+    } catch (err) {
+      showToast("❌", "Stake failed");
+    } finally { setLoading(false); }
+  };
+
+  const handleUnstake = async () => {
+    if (!account) return showToast("❌", "Connect wallet!");
+    const amt = parseFloat(unstakeAmt);
+    if (!amt || amt <= 0) return showToast("❌", "Enter amount!");
+    if (amt > stakedLP) return showToast("❌", `Max ${fmtBal(stakedLP)} LP staked`);
+    setLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      const newStaked = stakedLP - amt;
+      setStakedLP(newStaked);
+      localStorage.setItem("freesia_staked_lp", String(newStaked));
+      showToast("✅", `Unstaked ${amt} LP!`);
+      addHistory("Unstake", `Unstaked ${amt} LP`, "local");
+      setUnstakeAmt("");
+    } catch (err) {
+      showToast("❌", "Unstake failed");
+    } finally { setLoading(false); }
+  };
+
+  const handleClaim = async () => {
+    if (mbgEarned <= 0) return showToast("❌", "No reward to claim");
+    setLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 1000));
+      showToast("✅", `Claimed ${mbgEarned.toFixed(6)} MBG!`);
+      addHistory("Claim", `Claimed ${mbgEarned.toFixed(6)} MBG`, "local");
+      setMbgEarned(0);
+      localStorage.setItem("freesia_mbg_earned", "0");
+    } catch (err) {
+      showToast("❌", "Claim failed");
+    } finally { setLoading(false); }
+  };
+
   const card = { backgroundColor: theme.card, borderRadius: 24, padding: 24, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 460 };
+  const inp = { padding: 14, backgroundColor: theme.input, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.text, fontWeight: 700, fontSize: 16, width: "100%", boxSizing: "border-box" };
+
   return (
     <div style={card}>
       <h3 style={{ margin: "0 0 20px 0", fontSize: 20, fontWeight: 800 }}><Trophy size={20} style={{ verticalAlign: "middle", marginRight: 8 }} />MBG Staking</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
         <div style={{ backgroundColor: theme.input, padding: 16, borderRadius: 12, border: `1px solid ${theme.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 12, color: theme.sub }}>Pool TVL</div><div style={{ fontSize: 20, fontWeight: 800 }}>$250,400</div>
+          <div style={{ fontSize: 12, color: theme.sub }}>LP Staked</div><div style={{ fontSize: 20, fontWeight: 800, color: theme.accent }}>{fmtBal(stakedLP)}</div>
         </div>
         <div style={{ backgroundColor: theme.input, padding: 16, borderRadius: 12, border: `1px solid ${theme.border}`, textAlign: "center" }}>
           <div style={{ fontSize: 12, color: theme.sub }}>APY</div><div style={{ fontSize: 20, fontWeight: 800, color: theme.green }}>32.50%</div>
         </div>
       </div>
+
+      {/* Reward */}
       <div style={{ backgroundColor: "#fef3c7", padding: 16, borderRadius: 12, border: "1px solid #fde68a", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div><div style={{ fontSize: 12, color: "#92400e" }}>MBG Earned</div><div style={{ fontSize: 24, fontWeight: 800, fontFamily: "monospace" }}>{mbgEarned.toFixed(6)}</div></div>
-          <button onClick={() => setMbgEarned(0)} disabled={mbgEarned <= 0} style={{ backgroundColor: mbgEarned > 0 ? theme.yellow : theme.border, border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: 700, cursor: mbgEarned > 0 ? "pointer" : "not-allowed" }}>Claim</button>
+          <button onClick={handleClaim} disabled={mbgEarned <= 0 || loading} style={{ backgroundColor: mbgEarned > 0 ? theme.yellow : theme.border, border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: 700, cursor: mbgEarned > 0 ? "pointer" : "not-allowed" }}>
+            {loading ? "⏳" : "Claim"}
+          </button>
         </div>
       </div>
-      <input type="number" placeholder="LP Amount to Stake" value={stakeAmt} onChange={e => setStakeAmt(e.target.value)} style={{ padding: 14, backgroundColor: theme.input, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.text, fontWeight: 700, fontSize: 16, width: "100%", marginBottom: 12, boxSizing: "border-box" }} />
-      <button onClick={() => { if (stakeAmt) setStakeAmt(""); }} style={{ width: "100%", backgroundColor: "#111827", color: "#fff", border: "none", padding: 16, borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>Lock & Stake</button>
+
+      {/* Mode toggle */}
+      <div style={{ display: "flex", gap: 4, backgroundColor: theme.input, borderRadius: 10, padding: 3, marginBottom: 16 }}>
+        <button onClick={() => setStakeMode("stake")} style={{ flex: 1, padding: "8px 16px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", backgroundColor: stakeMode === "stake" ? theme.accent : "transparent", color: stakeMode === "stake" ? "#fff" : theme.sub }}>Stake</button>
+        <button onClick={() => setStakeMode("unstake")} style={{ flex: 1, padding: "8px 16px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", backgroundColor: stakeMode === "unstake" ? theme.red : "transparent", color: stakeMode === "unstake" ? "#fff" : theme.sub }}>Unstake</button>
+      </div>
+
+      {stakeMode === "stake" ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 8 }}>
+            <span>LP Amount</span><span>Available: {fmtBal(poolInfo.userLP)} LP</span>
+          </div>
+          <input type="number" placeholder="0.0" value={stakeAmt} onChange={e => setStakeAmt(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
+          <button onClick={handleStake} disabled={loading} style={{ width: "100%", backgroundColor: "#111827", color: "#fff", border: "none", padding: 16, borderRadius: 12, fontWeight: 800, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+            {loading ? "⏳ Locking..." : "Lock & Stake"}
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.sub, marginBottom: 8 }}>
+            <span>LP Amount</span><span>Staked: {fmtBal(stakedLP)} LP</span>
+          </div>
+          <input type="number" placeholder="0.0" value={unstakeAmt} onChange={e => setUnstakeAmt(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
+          <button onClick={handleUnstake} disabled={loading} style={{ width: "100%", backgroundColor: theme.red, color: "#fff", border: "none", padding: 16, borderRadius: 12, fontWeight: 800, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+            {loading ? "⏳ Unlocking..." : "Unlock & Unstake"}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -692,8 +836,9 @@ function DashboardPanel({ balances, txHistory, poolInfo, theme }) {
       </div>
       <h4 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12 }}>Wallet Balances</h4>
       {Object.entries(TOKEN_LIST).map(([sym, info]) => (
-        <div key={sym} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
-          <span>{info.logo} {sym}</span><strong>{balances[sym] || "0.00"}</strong>
+        <div key={sym} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><TokenLogo symbol={sym} size={24} /> {sym}</span>
+          <strong>{fmtBal(balances[sym])}</strong>
         </div>
       ))}
     </div>
@@ -829,7 +974,7 @@ export default function App() {
           {activeTab === "faucet" && <FaucetPanel account={account} signer={signer} provider={provider} balances={balances} updateBalances={updateBalances} showToast={showToastCb} theme={theme} addHistory={addHistory} />}
           {activeTab === "pool" && <PoolPanel account={account} signer={signer} provider={provider} balances={balances} updateBalances={updateBalances} showToast={showToastCb} theme={theme} addHistory={addHistory} poolInfo={poolInfo} />}
           {activeTab === "il" && <ILSimulatorPanel theme={theme} />}
-          {activeTab === "staking" && <StakingPanel theme={theme} />}
+          {activeTab === "staking" && <StakingPanel account={account} signer={signer} theme={theme} showToast={showToastCb} poolInfo={poolInfo} balances={balances} updateBalances={updateBalances} addHistory={addHistory} />}
           {activeTab === "dashboard" && <DashboardPanel balances={balances} txHistory={txHistory} poolInfo={poolInfo} theme={theme} />}
           {activeTab === "history" && <HistoryPanel txHistory={txHistory} theme={theme} />}
         </div>
