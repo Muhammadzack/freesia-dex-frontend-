@@ -953,9 +953,14 @@ export default function App() {
             <button onClick={() => setDarkMode(!darkMode)} style={{ background: "none", border: `1px solid ${theme.border}`, borderRadius: 10, padding: 8, cursor: "pointer", color: theme.sub }}>{darkMode ? <Sun size={16} /> : <Moon size={16} />}</button>
             <a href={EXPLORER_URL} target="_blank" rel="noreferrer" style={{ color: theme.sub, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>Explorer ↗</a>
             {account ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, backgroundColor: theme.input, padding: "8px 14px", borderRadius: 12, border: `1px solid ${theme.border}` }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{account.slice(0, 6)}...{account.slice(-4)}</span>
-                <button onClick={copyAddress} style={{ background: "none", border: "none", cursor: "pointer", color: theme.sub, padding: 0 }}><Copy size={14} /></button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, backgroundColor: theme.input, padding: "8px 14px", borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{account.slice(0, 6)}...{account.slice(-4)}</span>
+                  <button onClick={copyAddress} style={{ background: "none", border: "none", cursor: "pointer", color: theme.sub, padding: 0 }}><Copy size={14} /></button>
+                </div>
+                <button onClick={() => { setAccount(""); setSigner(null); setProvider(null); showToastCb("👋", "Wallet disconnected"); }} style={{ backgroundColor: theme.red, color: "#fff", border: "none", padding: "8px 12px", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                  ✕
+                </button>
               </div>
             ) : (
               <button onClick={connectWallet} disabled={connecting} style={{ backgroundColor: theme.accent, color: "#fff", border: "none", padding: "10px 20px", borderRadius: 12, fontWeight: 700, cursor: "pointer" }}>{connecting ? "..." : "Connect Wallet"}</button>
@@ -978,10 +983,124 @@ export default function App() {
           {activeTab === "dashboard" && <DashboardPanel balances={balances} txHistory={txHistory} poolInfo={poolInfo} theme={theme} />}
           {activeTab === "history" && <HistoryPanel txHistory={txHistory} theme={theme} />}
         </div>
+        {/* Floating Minion Animation */}
+        <div className="minion-float" style={{
+          position: "fixed", bottom: 20, right: 20, zIndex: 999,
+          width: 80, height: 100, cursor: "pointer",
+          animation: "minionBounce 3s ease-in-out infinite",
+        }} title="Banana! 🍌">
+          {/* Minion Body */}
+          <div style={{
+            width: 60, height: 80, backgroundColor: "#F5E050", borderRadius: "30px 30px 20px 20px",
+            position: "relative", margin: "0 auto",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          }}>
+            {/* Goggles */}
+            <div style={{
+              width: 56, height: 22, backgroundColor: "#888", borderRadius: 11,
+              position: "absolute", top: 18, left: 2, display: "flex", gap: 2, padding: "0 4px",
+              alignItems: "center", justifyContent: "center",
+            }}>
+              {/* Left Eye */}
+              <div style={{ width: 18, height: 18, backgroundColor: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 8, height: 8, backgroundColor: "#8B4513", borderRadius: "50%", position: "relative" }}>
+                  <div style={{ width: 3, height: 3, backgroundColor: "#000", borderRadius: "50%", position: "absolute", top: 2, left: 2 }} />
+                </div>
+              </div>
+              {/* Right Eye */}
+              <div style={{ width: 18, height: 18, backgroundColor: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 8, height: 8, backgroundColor: "#8B4513", borderRadius: "50%", position: "relative" }}>
+                  <div style={{ width: 3, height: 3, backgroundColor: "#000", borderRadius: "50%", position: "absolute", top: 2, left: 2 }} />
+                </div>
+              </div>
+            </div>
+            {/* Mouth */}
+            <div style={{
+              width: 20, height: 8, borderBottom: "3px solid #333", borderRadius: "0 0 10px 10px",
+              position: "absolute", top: 48, left: 20,
+            }} />
+            {/* Overall */}
+            <div style={{
+              width: 60, height: 28, backgroundColor: "#4A7DB3", borderRadius: "0 0 18px 18px",
+              position: "absolute", bottom: 0, left: 0,
+            }}>
+              {/* Pocket */}
+              <div style={{
+                width: 14, height: 12, backgroundColor: "#3A6DA3", borderRadius: "0 0 7px 7px",
+                position: "absolute", top: 8, left: 23,
+              }} />
+            </div>
+            {/* Arms */}
+            <div style={{
+              width: 14, height: 4, backgroundColor: "#F5E050", borderRadius: 2,
+              position: "absolute", top: 50, left: -8, transform: "rotate(-20deg)",
+            }} />
+            <div style={{
+              width: 14, height: 4, backgroundColor: "#F5E050", borderRadius: 2,
+              position: "absolute", top: 50, right: -8, transform: "rotate(20deg)",
+            }} />
+          </div>
+          {/* Shadow */}
+          <div style={{
+            width: 40, height: 6, backgroundColor: "rgba(0,0,0,0.15)", borderRadius: "50%",
+            margin: "4px auto 0",
+            animation: "minionShadow 3s ease-in-out infinite",
+          }} />
+        </div>
+
+        {/* Minion 2 - Bottom Left (Wave) */}
+        <div className="minion-wave" style={{
+          position: "fixed", bottom: 20, left: 20, zIndex: 999,
+          width: 60, height: 80, cursor: "pointer",
+          animation: "minionWave 2.5s ease-in-out infinite",
+        }} title="Bello! 👋">
+          {/* One-eye minion body */}
+          <div style={{
+            width: 44, height: 60, backgroundColor: "#F5E050", borderRadius: "22px 22px 16px 16px",
+            position: "relative", margin: "0 auto",
+            boxShadow: "0 3px 10px rgba(0,0,0,0.15)",
+          }}>
+            {/* Single Goggle */}
+            <div style={{
+              width: 32, height: 18, backgroundColor: "#888", borderRadius: 9,
+              position: "absolute", top: 14, left: 6, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{ width: 14, height: 14, backgroundColor: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 7, height: 7, backgroundColor: "#4A90D9", borderRadius: "50%" }} />
+              </div>
+            </div>
+            {/* Smile */}
+            <div style={{
+              width: 16, height: 6, borderBottom: "2px solid #333", borderRadius: "0 0 8px 8px",
+              position: "absolute", top: 38, left: 14,
+            }} />
+            {/* Overall */}
+            <div style={{
+              width: 44, height: 20, backgroundColor: "#4A7DB3", borderRadius: "0 0 14px 14px",
+              position: "absolute", bottom: 0, left: 0,
+            }} />
+            {/* Waving arm */}
+            <div className="waving-arm" style={{
+              width: 12, height: 3, backgroundColor: "#F5E050", borderRadius: 2,
+              position: "absolute", top: 32, left: -6,
+              transformOrigin: "right center",
+              animation: "waveArm 1s ease-in-out infinite",
+            }} />
+          </div>
+        </div>
+
         <footer style={{ textAlign: "center", marginTop: 60, padding: "30px 0", borderTop: `1px solid ${theme.border}` }}>
-          <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 16 }}>
-            <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: theme.sub, fontSize: 20, textDecoration: "none" }}>𝕏</a>
-            <a href="https://github.com/Muhammadzack/freesia-dex-frontend-" target="_blank" rel="noreferrer" style={{ color: theme.sub, fontSize: 20, textDecoration: "none" }}>🐙</a>
+          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 16, alignItems: "center" }}>
+            {/* X (Twitter) SVG */}
+            <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: theme.sub, textDecoration: "none" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+            {/* GitHub SVG Logo (REAL) */}
+            <a href="https://github.com/Muhammadzack/freesia-dex-frontend-" target="_blank" rel="noreferrer" style={{ color: theme.sub, textDecoration: "none" }}>
+              <svg width="24" height="24" viewBox="0 0 98 96" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z"/>
+              </svg>
+            </a>
           </div>
           <p style={{ fontSize: 12, color: theme.sub }}>© 2026 Freesia DEX. Built by <a href="https://x.com/0xzackbh" target="_blank" rel="noreferrer" style={{ color: theme.accent, textDecoration: "none" }}>@0xzackbh</a> on LitVM Testnet.</p>
         </footer>
