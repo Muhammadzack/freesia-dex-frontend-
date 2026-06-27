@@ -217,6 +217,119 @@ function LandingPage({ onLaunch }) {
   );
 }
 
+/* ============ AI SMART SWAP ROUTER ============ */
+// Find the best route by checking all possible paths
+async function findBestRoute(provider, fromSym, toSym, amountIn) {
+  if (!amountIn || parseFloat(amountIn) <= 0) return null;
+  const readProv = provider || new ethers.JsonRpcProvider(LITVM_RPC);
+  const pool = new ethers.Contract(CONTRACTS.POOL, POOL_ABI, readProv);
+  const amt = ethers.parseUnits(String(amountIn), TOKEN_LIST[fromSym].decimals);
+  const getAddr = (s) => TOKEN_LIST[s].isNative ? CONTRACTS.USDC : TOKEN_LIST[s].address;
+  
+  const routes = [];
+  
+  // Route 1: Direct
+  try {
+    const out = await pool.getAmountOut(getAddr(fromSym), getAddr(toSym), amt);
+    const outFmt = parseFloat(ethers.formatUnits(out, TOKEN_LIST[toSym].decimals));
+    routes.push({ name: "Direct", path: [fromSym, toSym], output: outFmt, hops: 1 });
+  } catch (e) {}
+  
+  // Route 2: Via USDC
+  if (fromSym !== "USDC" && toSym !== "USDC") {
+    try {
+      const out1 = await pool.getAmountOut(getAddr(fromSym), CONTRACTS.USDC, amt);
+      const out2 = await pool.getAmountOut(CONTRACTS.USDC, getAddr(toSym), out1);
+      const outFmt = parseFloat(ethers.formatUnits(out2, TOKEN_LIST[toSym].decimals));
+      routes.push({ name: "Via USDC", path: [fromSym, "USDC", toSym], output: outFmt, hops: 2 });
+    } catch (e) {}
+  }
+  
+  // Route 3: Via DAI
+  if (fromSym !== "DAI" && toSym !== "DAI") {
+    try {
+      const out1 = await pool.getAmountOut(getAddr(fromSym), CONTRACTS.DAI, amt);
+      const out2 = await pool.getAmountOut(CONTRACTS.DAI, getAddr(toSym), out1);
+      const outFmt = parseFloat(ethers.formatUnits(out2, TOKEN_LIST[toSym].decimals));
+      routes.push({ name: "Via DAI", path: [fromSym, "DAI", toSym], output: outFmt, hops: 2 });
+    } catch (e) {}
+  }
+  
+  // Route 4: Via USDT
+  if (fromSym !== "USDT" && toSym !== "USDT") {
+    try {
+      const out1 = await pool.getAmountOut(getAddr(fromSym), CONTRACTS.USDT, amt);
+      const out2 = await pool.getAmountOut(CONTRACTS.USDT, getAddr(toSym), out1);
+      const outFmt = parseFloat(ethers.formatUnits(out2, TOKEN_LIST[toSym].decimals));
+      routes.push({ name: "Via USDT", path: [fromSym, "USDT", toSym], output: outFmt, hops: 2 });
+    } catch (e) {}
+  }
+  
+  if (routes.length === 0) return null;
+  
+  // Sort by best output
+  routes.sort((a, b) => b.output - a.output);
+  
+  const best = routes[0];
+  const savings = routes.length > 1 ? ((best.output - routes[routes.length-1].output) / routes[routes.length-1].output * 100).toFixed(2) : 0;
+  
+  return { routes, best, savings };
+}
+
+/* ============ AI PRICE ALERT ============ */
+function PriceAlertPanel({ theme }) {
+  const [alerts, setAlerts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("freesia_price_alerts") || "[]"); } catch { return []; }
+  });
+  const [newAlertToken, setNewAlertToken] = useState("USDC");
+  const [newAlertPrice, setNewAlertPrice] = useState("");
+  const [newAlertType, setNewAlertType] = useState("above");
+  
+  const saveAlerts = (a) => { setAlerts(a); localStorage.setItem("freesia_price_alerts", JSON.stringify(a)); };
+  
+  const addAlert = () => {
+    if (!newAlertPrice || parseFloat(newAlertPrice) <= 0) return;
+    const newAlert = { id: Date.now(), token: newAlertToken, price: parseFloat(newAlertPrice), type: newAlertType, triggered: false };
+    saveAlerts([...alerts, newAlert]);
+    setNewAlertPrice("");
+  };
+  
+  const removeAlert = (id) => saveAlerts(alerts.filter(a => a.id !== id));
+  
+  const card = { backgroundColor: theme.card, borderRadius: 24, padding: 24, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 460 };
+  const inp = { padding: 12, backgroundColor: theme.input, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.text, fontWeight: 700, fontSize: 14, width: "100%", boxSizing: "border-box" };
+  
+  return (
+    <div style={card}>
+      <h3 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 800 }}>🔔 AI Price Alert</h3>
+      <p style={{ fontSize: 12, color: theme.sub, marginBottom: 16 }}>Get notified when token price crosses your target</p>
+      
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <select value={newAlertToken} onChange={e => setNewAlertToken(e.target.value)} style={inp}>
+          {Object.keys(TOKEN_LIST).filter(s => !TOKEN_LIST[s].isNative).map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={newAlertType} onChange={e => setNewAlertType(e.target.value)} style={inp}>
+          <option value="above">Above</option>
+          <option value="below">Below</option>
+        </select>
+        <input type="number" placeholder="Price" value={newAlertPrice} onChange={e => setNewAlertPrice(e.target.value)} style={inp} />
+      </div>
+      <button onClick={addAlert} style={{ width: "100%", backgroundColor: theme.accent, color: "#fff", border: "none", padding: 12, borderRadius: 12, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>Add Alert</button>
+      
+      {alerts.length === 0 ? (
+        <p style={{ textAlign: "center", color: theme.sub, fontSize: 13 }}>No alerts set</p>
+      ) : (
+        alerts.map(a => (
+          <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, backgroundColor: theme.input, borderRadius: 10, border: `1px solid ${theme.border}`, marginBottom: 8 }}>
+            <span style={{ fontSize: 13 }}><strong>{a.token}</strong> {a.type} ${a.price}</span>
+            <button onClick={() => removeAlert(a.id)} style={{ background: "none", border: "none", color: theme.red, cursor: "pointer", fontSize: 16 }}>✕</button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 /* ============ SWAP PANEL ============ */
 function SwapPanel({ account, signer, provider, balances, updateBalances, showToast, theme, addHistory }) {
   const [fromSym, setFromSym] = useState("USDC");
@@ -226,10 +339,14 @@ function SwapPanel({ account, signer, provider, balances, updateBalances, showTo
   const [swapLoading, setSwapLoading] = useState(false);
   const [slippage, setSlippage] = useState(0.5);
   const [showSlippage, setShowSlippage] = useState(false);
+  // AI Router states
+  const [aiRoutes, setAiRoutes] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiRouter, setShowAiRouter] = useState(false);
 
   useEffect(() => {
     const calc = async () => {
-      if (!amountIn || parseFloat(amountIn) <= 0) { setAmountOut(""); return; }
+      if (!amountIn || parseFloat(amountIn) <= 0) { setAmountOut(""); setAiRoutes(null); return; }
       try {
         const readProv = provider || new ethers.JsonRpcProvider(LITVM_RPC);
         const pool = new ethers.Contract(CONTRACTS.POOL, POOL_ABI, readProv);
@@ -242,6 +359,53 @@ function SwapPanel({ account, signer, provider, balances, updateBalances, showTo
     };
     calc();
   }, [amountIn, fromSym, toSym, provider]);
+
+  // AI Router calculation
+  useEffect(() => {
+    const calcRoutes = async () => {
+      if (!amountIn || parseFloat(amountIn) <= 0 || !showAiRouter) { setAiRoutes(null); return; }
+      setAiLoading(true);
+      try {
+        const result = await findBestRoute(provider, fromSym, toSym, amountIn);
+        setAiRoutes(result);
+      } catch (e) { setAiRoutes(null); }
+      finally { setAiLoading(false); }
+    };
+    calcRoutes();
+  }, [amountIn, fromSym, toSym, provider, showAiRouter]);
+
+  const handleSwap = async () => {
+    if (!signer || !account) return showToast("❌", "Connect wallet first!");
+    if (!amountIn || parseFloat(amountIn) <= 0) return showToast("❌", "Enter amount!");
+    setSwapLoading(true);
+    try {
+      const fromAddr = TOKEN_LIST[fromSym].isNative ? CONTRACTS.USDC : TOKEN_LIST[fromSym].address;
+      const toAddr = TOKEN_LIST[toSym].isNative ? CONTRACTS.DAI : TOKEN_LIST[toSym].address;
+      const amt = ethers.parseUnits(String(amountIn), TOKEN_LIST[fromSym].decimals);
+      const pool = new ethers.Contract(CONTRACTS.POOL, POOL_ABI, signer);
+      if (!TOKEN_LIST[fromSym].isNative) {
+        const token = new ethers.Contract(fromAddr, ERC20_ABI, signer);
+        const allow = await token.allowance(account, CONTRACTS.POOL);
+        if (allow < amt) {
+          showToast("⏳", "Approving token...");
+          await (await token.approve(CONTRACTS.POOL, ethers.MaxUint256)).wait();
+        }
+      }
+      const minOut = ethers.parseUnits(String(parseFloat(amountOut) * (1 - slippage / 100)), TOKEN_LIST[toSym].decimals);
+      showToast("⏳", "Confirm swap in wallet...");
+      const tx = await pool.swap(fromAddr, toAddr, amt, minOut, { gasLimit: 500000 });
+      await tx.wait();
+      showToast("🎉", `Swapped ${amountIn} ${fromSym} → ${amountOut} ${toSym}`);
+      addHistory("Swap", `${amountIn} ${fromSym} → ${amountOut} ${toSym}`, tx.hash);
+      setAmountIn(""); setAmountOut(""); setAiRoutes(null);
+      updateBalances(provider, account);
+    } catch (err) {
+      showToast("❌", "Swap failed: " + (err.reason || err.message || "").slice(0, 60));
+    } finally { setSwapLoading(false); }
+  };
+
+  const card = { backgroundColor: theme.card, borderRadius: 24, padding: 24, border: `1px solid ${theme.border}`, width: "100%", maxWidth: 460 };
+  const inputBox = { backgroundColor: theme.input, padding: 16, borderRadius: 16, border: `1px solid ${theme.border}` };
 
   const handleSwap = async () => {
     if (!signer || !account) return showToast("❌", "Connect wallet first!");
@@ -321,6 +485,45 @@ function SwapPanel({ account, signer, provider, balances, updateBalances, showTo
           </div>
         </div>
       </div>
+      {/* AI Smart Router Toggle */}
+      <button onClick={() => setShowAiRouter(!showAiRouter)} style={{ width: "100%", backgroundColor: showAiRouter ? "#e0f2fe" : theme.input, color: showAiRouter ? "#0c4a6e" : theme.sub, border: `1px solid ${showAiRouter ? "#7dd3fc" : theme.border}`, padding: "10px 16px", borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <span>🤖</span> {showAiRouter ? "Hide AI Router" : "AI Smart Router"}
+      </button>
+
+      {/* AI Router Results */}
+      {showAiRouter && (
+        <div style={{ backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 16, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#0369a1", marginBottom: 10 }}>🧠 AI Route Analysis</div>
+          {aiLoading ? (
+            <div style={{ textAlign: "center", padding: 20, color: "#0369a1", fontSize: 13 }}>
+              <span className="spin">🔄</span> AI analyzing routes...
+            </div>
+          ) : aiRoutes && aiRoutes.routes.length > 0 ? (
+            <>
+              <div style={{ fontSize: 11, color: "#0369a1", marginBottom: 8 }}>Best route saves <strong>{aiRoutes.savings}%</strong> vs worst</div>
+              {aiRoutes.routes.map((r, i) => (
+                <div key={i} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "8px 12px", borderRadius: 10, marginBottom: 6,
+                  backgroundColor: i === 0 ? "#dcfce7" : "#fff",
+                  border: i === 0 ? "1px solid #86efac" : "1px solid #e2e8f0",
+                  fontSize: 12,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {i === 0 && <span>🏆</span>}
+                    <span style={{ fontWeight: 700, color: i === 0 ? "#166534" : theme.text }}>{r.name}</span>
+                    <span style={{ color: theme.sub }}>({r.hops} hop{r.hops > 1 ? "s" : ""})</span>
+                  </div>
+                  <strong style={{ color: i === 0 ? "#166534" : theme.text }}>{r.output.toFixed(4)} {toSym}</strong>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{ textAlign: "center", padding: 16, color: "#0369a1", fontSize: 12 }}>Enter amount to see AI route comparison</div>
+          )}
+        </div>
+      )}
+
       <button onClick={handleSwap} disabled={!account || !amountIn || swapLoading} style={{ width: "100%", backgroundColor: !account ? theme.border : theme.accent, color: "#fff", border: "none", padding: 16, borderRadius: 16, fontWeight: 800, fontSize: 16, cursor: account && amountIn ? "pointer" : "not-allowed", opacity: account && amountIn ? 1 : 0.6 }}>
         {!account ? "Connect Wallet" : swapLoading ? "⏳ Swapping..." : `Swap ${fromSym} → ${toSym}`}
       </button>
@@ -928,6 +1131,7 @@ export default function App() {
     { id: "pool", label: "Pool", icon: "🏊" },
     { id: "il", label: "IL Sim", icon: "🛡️" },
     { id: "staking", label: "Staking", icon: "💎" },
+    { id: "alerts", label: "Alerts", icon: "🔔" },
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "history", label: "History", icon: "📋" },
   ];
@@ -980,6 +1184,7 @@ export default function App() {
           {activeTab === "pool" && <PoolPanel account={account} signer={signer} provider={provider} balances={balances} updateBalances={updateBalances} showToast={showToastCb} theme={theme} addHistory={addHistory} poolInfo={poolInfo} />}
           {activeTab === "il" && <ILSimulatorPanel theme={theme} />}
           {activeTab === "staking" && <StakingPanel account={account} signer={signer} theme={theme} showToast={showToastCb} poolInfo={poolInfo} balances={balances} updateBalances={updateBalances} addHistory={addHistory} />}
+          {activeTab === "alerts" && <PriceAlertPanel theme={theme} />}
           {activeTab === "dashboard" && <DashboardPanel balances={balances} txHistory={txHistory} poolInfo={poolInfo} theme={theme} />}
           {activeTab === "history" && <HistoryPanel txHistory={txHistory} theme={theme} />}
         </div>
