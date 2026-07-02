@@ -4,6 +4,7 @@ import { Droplets, ExternalLink } from "lucide-react";
 import { TOKEN_LIST, ERC20_ABI, FAUCET_AMOUNT } from "../utils/constants";
 import { fmtBal } from "../utils/formatters";
 import TokenLogo from "./TokenLogo";
+import { withRetry } from "../utils/rpc";
 
 export default function FaucetPanel({ account, signer, provider, showToast, theme, addHistory }) {
   const [loading, setLoading] = useState(null);
@@ -46,18 +47,19 @@ export default function FaucetPanel({ account, signer, provider, showToast, them
     if (!account || !provider) return;
     const fetchAll = async () => {
       const b = {};
-      for (const [sym] of Object.entries(TOKEN_LIST)) {
-        try {
-          if (TOKEN_LIST[sym].isNative) {
-            const bal = await provider.getBalance(account);
-            b[sym] = ethers.formatEther(bal);
-          } else {
-            const token = new ethers.Contract(TOKEN_LIST[sym].address, ERC20_ABI, provider);
-            const bal = await token.balanceOf(account);
-            b[sym] = ethers.formatUnits(bal, TOKEN_LIST[sym].decimals);
-          }
-        } catch { b[sym] = "0"; }
-      }
+for (const [sym] of Object.entries(TOKEN_LIST)) {
+  try {
+    if (TOKEN_LIST[sym].isNative) {
+      const bal = await withRetry(() => provider.getBalance(account));
+      b[sym] = ethers.formatEther(bal);
+    } else {
+      const token = new ethers.Contract(TOKEN_LIST[sym].address, ERC20_ABI, provider);
+      const bal = await withRetry(() => token.balanceOf(account));
+      b[sym] = ethers.formatUnits(bal, TOKEN_LIST[sym].decimals);
+    }
+  } catch { b[sym] = "0"; }
+  await new Promise(res => setTimeout(res, 300));
+}
       setUserBalances(b);
     };
     fetchAll();

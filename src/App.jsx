@@ -103,13 +103,18 @@ export default function App() {
           return;
         }
       }
-      const nw = await prov.getNetwork();
-      if (Number(nw.chainId) !== CHAIN_ID) return;
-      const sig = await prov.getSigner();
+      const freshProv = new ethers.BrowserProvider(window.ethereum);
+const nw = await freshProv.getNetwork();
+if (Number(nw.chainId) !== CHAIN_ID) {
+  showToast("❌", "Gagal pindah ke jaringan LitVM Testnet.");
+  return;
+}
+const sig = await freshProv.getSigner();
+
       const addr = await sig.getAddress();
       setAccount(addr);
       setSigner(sig);
-      setProvider(prov);
+      setProvider(freshProv);
       showToast("✅", "Wallet connected!");
     } catch (err) { showToast("❌", (err?.message || "").slice(0, 60)); }
   };
